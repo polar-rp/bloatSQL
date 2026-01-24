@@ -1,0 +1,41 @@
+{
+  "name": "bloat-sql",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "dev:vite": "vite",
+    "build": "tauri build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gfazioli/mantine-led": "^1.0.1",
+    "@mantine/core": "^8.3.12",
+    "@mantine/form": "^8.3.12",
+    "@mantine/hooks": "^8.3.12",
+    "@mantine/notifications": "^8.3.12",
+    "@tabler/icons-react": "^3.0.0",
+    "@tanstack/react-virtual": "^3.13.0",
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "@tauri-apps/plugin-os": "^2.3.1",
+    "clsx": "^2.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-error-boundary": "^6.1.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.6",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "postcss": "^8.5.6",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.6"
+  }
+}

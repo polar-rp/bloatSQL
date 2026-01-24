@@ -1,0 +1,10 @@
+
+> bloat-sql@0.0.1 type-check
+> tsc --noEmit
+
+src/components/ErrorBoundary.tsx(17,14): error TS18046: 'error' is of type 'unknown'.
+src/components/ErrorBoundary.tsx(18,14): error TS18046: 'error' is of type 'unknown'.
+src/components/ErrorBoundary.tsx(18,36): error TS18046: 'error' is of type 'unknown'.
+src/components/Layout/Header.tsx(34,3): error TS6133: 'navbarCollapsed' is declared but its value is never read.
+src/components/Layout/Navbar/ConnectionsMenu.tsx(28,3): error TS6133: 'onEditConnection' is declared but its value is never read.
+src/components/Layout/Navbar/ConnectionsMenu.tsx(29,3): error TS6133: 'onDeleteConnection' is declared but its value is never read.

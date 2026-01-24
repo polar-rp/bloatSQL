@@ -1,0 +1,21 @@
+.titleBar {
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.windowControl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  color: var(--mantine-color-default-color);
+
+  &:hover {
+    background-color: var(--mantine-color-default-hover);
+  }
+}
+
+.closeButton:hover {
+  background-color: var(--mantine-color-red-6);
+  color: white;
+}

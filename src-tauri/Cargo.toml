@@ -1,0 +1,54 @@
+[package]
+name = "bloat-sql"
+version = "0.0.1"
+description = "BloatSQL - Database Client"
+authors = ["you"]
+edition = "2021"
+rust-version = "1.57"
+build = "build.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-os = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Only include necessary tokio features for smaller binary
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "io-util"] }
+# MySQL/MariaDB async driver
+mysql_async = "0.34"
+# SQLite for local storage (bundled for portability)
+rusqlite = { version = "0.31", features = ["bundled"] }
+# Date/time handling
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+# UUID generation
+uuid = { version = "1", features = ["v4", "serde"] }
+# Async trait support
+async-trait = "0.1"
+# Base64 encoding for password storage
+base64 = "0.22"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+# Optimize for size
+opt-level = "z"
+# Link-time optimization for smaller binary
+lto = true
+# Strip symbols
+strip = true
+# Single codegen unit for better optimization
+codegen-units = 1
+# Abort on panic for smaller binary
+panic = "abort"
+
+[profile.dev]
+# Faster dev builds
+opt-level = 0
+# Faster incremental builds
+incremental = true
