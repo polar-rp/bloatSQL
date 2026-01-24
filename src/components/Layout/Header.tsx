@@ -8,12 +8,20 @@ interface HeaderProps {
   activeConnection: Connection | null;
   onExecuteQuery: () => void;
   onOpenExportModal: () => void;
+  navbarCollapsed: boolean;
+  asideCollapsed: boolean;
+  onToggleNavbar: () => void;
+  onToggleAside: () => void;
 }
 
 export function Header({
   activeConnection,
   onExecuteQuery,
   onOpenExportModal,
+  navbarCollapsed,
+  asideCollapsed,
+  onToggleNavbar,
+  onToggleAside,
 }: HeaderProps) {
   return (
     <Stack gap={0} w="100%">
@@ -21,6 +29,10 @@ export function Header({
         activeConnection={activeConnection}
         onExecuteQuery={onExecuteQuery}
         onOpenExportModal={onOpenExportModal}
+        navbarCollapsed={navbarCollapsed}
+        asideCollapsed={asideCollapsed}
+        onToggleNavbar={onToggleNavbar}
+        onToggleAside={onToggleAside}
       />
     </Stack>
   );

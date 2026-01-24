@@ -24,9 +24,8 @@ export function EditorTabs() {
     <Tabs
       value={activeTab}
       onChange={(value) => value && setActiveTab(value)}
-      style={{
-        borderBottom: `1px solid var(--mantine-color-default-border)`,
-      }}
+      variant='outline'
+      radius={0}
     >
       <Tabs.List>
         {tabs.map((tab) => (

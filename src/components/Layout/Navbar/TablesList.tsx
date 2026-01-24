@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useTransition, memo } from 'react';
 import {
   Stack,
   TextInput,
-  ScrollArea,
   Text,
   Center,
   Loader,
@@ -195,7 +194,7 @@ export function TablesList({
 
   if (!tables || tables.length === 0) {
     return (
-      <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
+      <Stack gap="xs">
         <Center h={100}>
           <Text size="sm" c="dimmed" ta="center">
             {isConnected ? 'No tables found' : 'Connect to see tables'}
@@ -206,7 +205,7 @@ export function TablesList({
   }
 
   return (
-    <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
+    <Stack gap="xs" >
       <TextInput
         placeholder="Search tables..."
         leftSection={<IconSearch size={16} />}
@@ -215,7 +214,6 @@ export function TablesList({
         size="xs"
       />
 
-      <ScrollArea style={{ flex: 1 }}>
         <Stack gap={0}>
           <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb="xs" px="xs">
             Tables ({filteredTables.length})
@@ -232,7 +230,6 @@ export function TablesList({
             />
           ))}
         </Stack>
-      </ScrollArea>
     </Stack>
   );
 }

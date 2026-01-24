@@ -1,1 +1,2 @@
-export { ConnectionForm } from './ConnectionForm';
+export { ConnectionForm } from "./ConnectionForm";
+export * from "./ConnectionModal";

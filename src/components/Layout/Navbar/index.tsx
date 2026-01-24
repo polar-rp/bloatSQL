@@ -1,7 +1,8 @@
-import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea } from '@mantine/core';
+import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon } from '@mantine/core';
 import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug } from '@tabler/icons-react';
 import { Connection } from '../../../types/database';
 import { TablesList } from './TablesList';
+import { Led } from '@gfazioli/mantine-led';
 
 interface NavbarProps {
   connections: Connection[];
@@ -59,12 +60,19 @@ export function Navbar({
           <Card withBorder padding="sm" radius="md">
             <Stack gap="xs">
               <Group justify="space-between" wrap="nowrap">
-                <Group gap="xs" style={{ minWidth: 0 }}>
-                  <IconDatabase size={20} style={{ flexShrink: 0 }} />
-                  <Stack gap={0} style={{ minWidth: 0 }}>
-                    <Text size="sm" fw={600} truncate>
-                      {activeConnection.name}
-                    </Text>
+                <Group gap="xs" >
+                  <ThemeIcon size={'lg'} variant='light'>
+                    <IconDatabase />
+                  </ThemeIcon>
+                  
+                  <Stack gap={0}>
+                    <Group gap={5}>
+                      <Text size="sm" fw={600} truncate>
+                        {activeConnection.name}
+                      </Text>
+                      <Led animate size='xs' animationType="pulse" animationDuration={3.5} />
+                    </Group>
+
                     <Text size="xs" c="dimmed" truncate>
                       {activeConnection.host}
                     </Text>

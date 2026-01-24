@@ -1,5 +1,16 @@
-import { Button, Group, Image, Menu, Text, UnstyledButton, Badge } from '@mantine/core';
-import { IconFileDownload, IconMinus, IconPlayerPlay, IconSquare, IconSquares, IconX } from '@tabler/icons-react';
+import { Button, Group, Image, Menu, Text, UnstyledButton, Badge, ActionIcon } from '@mantine/core';
+import {
+  IconFileDownload,
+  IconLayoutSidebarFilled,
+  IconLayoutSidebar,
+  IconLayoutSidebarRightFilled,
+  IconLayoutSidebarRight,
+  IconMinus,
+  IconPlayerPlay,
+  IconSquare,
+  IconSquares,
+  IconX
+} from '@tabler/icons-react';
 import { useWindowControls, useTauriContext } from '../../tauri/TauriProvider';
 import { Connection } from '../../types/database';
 import classes from './TitleBar.module.css';
@@ -11,9 +22,21 @@ interface TitleBarProps {
   activeConnection: Connection | null;
   onExecuteQuery: () => void;
   onOpenExportModal: () => void;
+  navbarCollapsed: boolean;
+  asideCollapsed: boolean;
+  onToggleNavbar: () => void;
+  onToggleAside: () => void;
 }
 
-export function TitleBar({ activeConnection, onExecuteQuery, onOpenExportModal }: TitleBarProps) {
+export function TitleBar({
+  activeConnection,
+  onExecuteQuery,
+  onOpenExportModal,
+  navbarCollapsed,
+  asideCollapsed,
+  onToggleNavbar,
+  onToggleAside,
+}: TitleBarProps) {
   const { minimize, toggleMaximize, close } = useWindowControls();
   const { isMaximized } = useTauriContext();
 
@@ -28,12 +51,11 @@ export function TitleBar({ activeConnection, onExecuteQuery, onOpenExportModal }
       {/* Left section: Logo + Menu */}
       <Group h="100%" px="md" gap="xs" wrap="nowrap">
         <Image src={appIcon} w={18} h={18} />
-        <Menu shadow="md" width={200} position="bottom-start">
+        <Menu shadow="md" width={200} position="bottom-start" trigger="hover">
           <Menu.Target>
             <Button
               variant="subtle"
-              color="gray"
-              c={'var(--mantine-color-placeholder)'}
+              color='var(--mantine-color-text)'
               size="compact-xs"
             >
               Database
@@ -69,7 +91,7 @@ export function TitleBar({ activeConnection, onExecuteQuery, onOpenExportModal }
         {activeConnection && (
           <Group gap={6}>
             <Led animate animationType="pulse" animationDuration={3.5} />
-            <Text size="xs" c="dimmed">Connected</Text>
+            <Text size="xs" c="var(--mantine-color-text)">Connected</Text>
             <Badge
               size="xs"
               variant="light"
@@ -81,28 +103,60 @@ export function TitleBar({ activeConnection, onExecuteQuery, onOpenExportModal }
         )}
       </Group>
 
-      {/* Right section: Window controls */}
+
+      <Group gap={2} mr={4}>
+        <ActionIcon
+          onClick={onToggleNavbar}
+          variant="subtle"
+          color="gray"
+          size="sm"
+          aria-label={navbarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {navbarCollapsed ? (
+            <IconLayoutSidebar color='var(--mantine-color-text)' />
+          ) : (
+            <IconLayoutSidebarFilled color='var(--mantine-color-text)' />
+          )}
+        </ActionIcon>
+
+        <ActionIcon
+          onClick={onToggleAside}
+          variant="subtle"
+          color="gray"
+          size="sm"
+          aria-label={asideCollapsed ? "Expand history" : "Collapse history"}
+        >
+          {asideCollapsed ? (
+            <IconLayoutSidebarRight color='var(--mantine-color-text)' />
+          ) : (
+            <IconLayoutSidebarRightFilled color='var(--mantine-color-text)' />
+          )}
+        </ActionIcon>
+      </Group>
+
+
+
       <Group gap={0} wrap="nowrap" h="100%">
         <UnstyledButton
           onClick={() => minimize()}
           className={classes.windowControl}
           aria-label="Minimize"
         >
-          <IconMinus size={16} stroke={1.7} />
+          <IconMinus size={16} stroke={1.7} color='var(--mantine-color-text)'/>
         </UnstyledButton>
         <UnstyledButton
           onClick={() => toggleMaximize()}
           className={classes.windowControl}
           aria-label={isMaximized ? "Restore" : "Maximize"}
         >
-          {isMaximized ? <IconSquares size={14} stroke={1.7} /> : <IconSquare size={14} stroke={1.7} />}
+          {isMaximized ? <IconSquares size={14} stroke={1.7} color='var(--mantine-color-text)' /> : <IconSquare size={14} stroke={1.7} color='var(--mantine-color-text)'/>}
         </UnstyledButton>
         <UnstyledButton
           onClick={() => close()}
           className={`${classes.windowControl} ${classes.closeButton}`}
           aria-label="Close"
         >
-          <IconX size={18} stroke={1.7} />
+          <IconX size={18} stroke={1.7} color='var(--mantine-color-text)'/>
         </UnstyledButton>
       </Group>
     </Group>

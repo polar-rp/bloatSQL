@@ -3,14 +3,13 @@ import {
   Divider,
   Group,
   Text,
-  ActionIcon,
   ScrollArea,
   Card,
   Code,
   Badge,
   rem,
 } from '@mantine/core';
-import { IconChevronRight, IconHistory } from '@tabler/icons-react';
+import { IconHistory } from '@tabler/icons-react';
 
 export interface HistoryItem {
   query: string;
@@ -24,24 +23,15 @@ interface AsideProps {
   onCollapse: () => void;
 }
 
-export function Aside({ queryHistory, onLoadQuery, onCollapse }: AsideProps) {
+export function Aside({ queryHistory, onLoadQuery }: AsideProps) {
   return (
     <Stack gap="md" h="100%">
       <Group justify="space-between">
-        <Group gap="xs">
           <IconHistory size={16} />
           <Text size="sm" fw={600}>
             Query History
           </Text>
         </Group>
-        <ActionIcon
-          variant="subtle"
-          size="sm"
-          onClick={onCollapse}
-        >
-          <IconChevronRight size={16} />
-        </ActionIcon>
-      </Group>
 
       <Divider />
 
