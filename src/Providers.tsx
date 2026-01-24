@@ -1,17 +1,25 @@
 import { ReactNode } from 'react';
-import { MantineProvider } from '@mantine/core';
+import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { TauriProvider } from './tauri/TauriProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useSettingsStore } from './stores/settingsStore';
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
+  const { primaryColor, colorScheme, defaultRadius } = useSettingsStore();
+
+  const theme = createTheme({
+    primaryColor,
+    defaultRadius,
+  });
+
   return (
     <TauriProvider>
-      <MantineProvider>
+      <MantineProvider theme={theme} defaultColorScheme={colorScheme} forceColorScheme={colorScheme === 'auto' ? undefined : colorScheme}>
         <Notifications position="top-right" />
         <ErrorBoundary>
           {children}

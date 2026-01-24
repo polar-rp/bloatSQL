@@ -1,17 +1,15 @@
 import { useState, useCallback, useEffect, useTransition, memo } from 'react';
 import {
   Stack,
-  TextInput,
   Text,
   Center,
   Loader,
   NavLink,
-  Badge,
   Group,
   rem,
+  Tooltip,
 } from '@mantine/core';
 import {
-  IconSearch,
   IconTable,
   IconKey,
   IconColumns,
@@ -25,55 +23,53 @@ interface TablesListProps {
   isConnected: boolean;
   selectedTable: string | null;
   onSelectTable: (tableName: string) => void;
+  searchQuery: string;
 }
 
 // Memoized column item to prevent re-renders
 const ColumnItem = memo(function ColumnItem({ column }: { column: TableColumn }) {
   const icon = column.isPrimaryKey
-    ? <IconKey size={12} color="var(--mantine-color-yellow-6)" />
+    ? <IconKey size={12} color="var(--mantine-primary-color-filled)" />
     : <IconColumns size={12} />;
 
-  const typeBadge = (() => {
-    const type = column.dataType.toLowerCase();
-    let color = 'gray';
-
-    if (type.includes('int') || type.includes('decimal') || type.includes('float') || type.includes('double')) {
-      color = 'blue';
-    } else if (type.includes('varchar') || type.includes('text') || type.includes('char')) {
-      color = 'green';
-    } else if (type.includes('date') || type.includes('time')) {
-      color = 'orange';
-    } else if (type.includes('bool')) {
-      color = 'violet';
-    }
-
-    return (
-      <Badge size="xs" variant="light" color={color}>
-        {column.dataType}
-      </Badge>
-    );
-  })();
+  const dataTypeLabel = (
+    <Tooltip label={column.dataType.toLowerCase()} withArrow position="right">
+      <Text
+        size="xs"
+        c="dimmed"
+        truncate="end"
+        style={{ maxWidth: rem(80), flexShrink: 0 }}
+      >
+        {column.dataType.toLowerCase()}
+      </Text>
+    </Tooltip>
+  );
 
   return (
     <NavLink
       label={
-        <Group gap={4} wrap="nowrap">
-          <Text size="xs" fw={column.isPrimaryKey ? 600 : 400}>
+        <Group gap={2} wrap="nowrap">
+          <Text
+            size="sm"
+            fw={column.isPrimaryKey ? 600 : 400}
+            truncate="end"
+          >
             {column.name}
           </Text>
           {!column.isNullable && (
-            <Text component="span" size="xs" c="red">
+            <Text component="span" size="sm" c="red" style={{ flexShrink: 0 }}>
               *
             </Text>
           )}
         </Group>
       }
-      leftSection={icon}
-      rightSection={typeBadge}
       styles={{
-        label: { fontSize: rem(12) },
-        root: { cursor: 'default' },
+        root: {
+          borderRadius: 'var(--mantine-radius-default)',
+        },
       }}
+      leftSection={icon}
+      rightSection={dataTypeLabel}
       variant="subtle"
     />
   );
@@ -111,8 +107,11 @@ const TableItem = memo(function TableItem({
       onChange={handleChange}
       childrenOffset={28}
       styles={{
-        label: { fontSize: rem(13) },
+        root: {
+          borderRadius: 'var(--mantine-radius-default)',
+        },
       }}
+
     >
       {isLoadingColumns ? (
         <Center py="xs">
@@ -137,28 +136,25 @@ export function TablesList({
   isConnected,
   selectedTable,
   onSelectTable,
+  searchQuery,
 }: TablesListProps) {
-  const [tableSearch, setTableSearch] = useState('');
   const [tableColumns, setTableColumns] = useState<Record<string, TableColumn[]>>({});
   const [loadingColumns, setLoadingColumns] = useState<Set<string>>(new Set());
 
-  // Use transition for column loading (non-blocking)
   const [, startColumnTransition] = useTransition();
 
   const filteredTables =
     tables?.filter((table) =>
-      table.toLowerCase().includes(tableSearch.toLowerCase())
+      table.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
   const loadColumnsForTable = useCallback((tableName: string) => {
-    // Skip if already loaded or loading
     if (tableColumns[tableName] || loadingColumns.has(tableName)) {
       return;
     }
 
     setLoadingColumns((prev) => new Set(prev).add(tableName));
 
-    // Use transition to keep UI responsive
     startColumnTransition(() => {
       tauriCommands.getTableColumns(tableName)
         .then((columns) => {
@@ -177,14 +173,13 @@ export function TablesList({
     });
   }, [tableColumns, loadingColumns, startColumnTransition]);
 
-  // Clear columns cache when tables change (e.g., reconnecting)
   useEffect(() => {
     setTableColumns({});
   }, [tables]);
 
   if (isLoadingTables) {
     return (
-      <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
+      <Stack gap="xs" flex={1}>
         <Center h={100}>
           <Loader size="sm" />
         </Center>
@@ -205,31 +200,21 @@ export function TablesList({
   }
 
   return (
-    <Stack gap="xs" >
-      <TextInput
-        placeholder="Search tables..."
-        leftSection={<IconSearch size={16} />}
-        value={tableSearch}
-        onChange={(e) => setTableSearch(e.currentTarget.value)}
-        size="xs"
-      />
-
-        <Stack gap={0}>
-          <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb="xs" px="xs">
-            Tables ({filteredTables.length})
-          </Text>
-          {filteredTables.map((table) => (
-            <TableItem
-              key={table}
-              table={table}
-              isSelected={selectedTable === table}
-              columns={tableColumns[table]}
-              isLoadingColumns={loadingColumns.has(table)}
-              onSelect={onSelectTable}
-              onOpen={loadColumnsForTable}
-            />
-          ))}
-        </Stack>
+    <Stack gap={0}>
+      <Text size="xs" tt="uppercase" fw={700} c="dimmed" mb="xs" px="xs">
+        Tables ({filteredTables.length})
+      </Text>
+      {filteredTables.map((table) => (
+        <TableItem
+          key={table}
+          table={table}
+          isSelected={selectedTable === table}
+          columns={tableColumns[table]}
+          isLoadingColumns={loadingColumns.has(table)}
+          onSelect={onSelectTable}
+          onOpen={loadColumnsForTable}
+        />
+      ))}
     </Stack>
   );
 }

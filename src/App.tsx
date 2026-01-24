@@ -282,7 +282,6 @@ function App() {
     setAsideCollapsed(true);
   }, []);
 
-  // Memoize query change handler
   const handleQueryChange = useCallback(
     (query: string) => {
       handleTabQueryUpdate(activeTab, query);
@@ -290,7 +289,6 @@ function App() {
     [handleTabQueryUpdate, activeTab],
   );
 
-  // Memoize isConnected to prevent object recreation
   const isConnected = useMemo(() => !!activeConnection, [activeConnection]);
 
   return (
@@ -298,7 +296,7 @@ function App() {
       <AppShell
         header={{ height: 32 }}
         navbar={{
-          width: 280,
+          width: 300,
           breakpoint: "sm",
           collapsed: { mobile: navbarCollapsed, desktop: navbarCollapsed },
         }}

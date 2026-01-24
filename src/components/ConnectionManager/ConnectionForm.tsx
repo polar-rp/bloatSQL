@@ -153,7 +153,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
       )}
 
       {/* Import Card */}
-      <Card withBorder padding="sm" radius="md">
+      <Card withBorder padding="sm">
         <Stack gap="xs">
           <Text size="sm" fw={500}>Import from URL</Text>
           <Group gap="xs" align="flex-start">
@@ -164,7 +164,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
               onChange={(e) => setImportUrl(e.currentTarget.value)}
               error={importError}
               rightSection={
-                <ActionIcon variant="light" color="blue" onClick={handleImport} title="Import">
+                <ActionIcon variant="light" onClick={handleImport} title="Import">
                   <IconDownload size={16} />
                 </ActionIcon>
               }

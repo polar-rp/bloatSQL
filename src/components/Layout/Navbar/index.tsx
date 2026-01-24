@@ -1,8 +1,9 @@
-import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon } from '@mantine/core';
-import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug } from '@tabler/icons-react';
+import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon, TextInput } from '@mantine/core';
+import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug, IconSearch } from '@tabler/icons-react';
 import { Connection } from '../../../types/database';
 import { TablesList } from './TablesList';
 import { Led } from '@gfazioli/mantine-led';
+import { useState } from 'react';
 
 interface NavbarProps {
   connections: Connection[];
@@ -33,6 +34,8 @@ export function Navbar({
   onDeleteConnection,
   onSelectTable,
 }: NavbarProps) {
+  const [tableSearch, setTableSearch] = useState('');
+
   if (connectionLoading) {
     return (
       <Stack h="100%" justify="center" align="center">
@@ -57,14 +60,14 @@ export function Navbar({
             New Connection
           </Button>
         ) : (
-          <Card withBorder padding="sm" radius="md">
+          <Card withBorder padding="sm">
             <Stack gap="xs">
               <Group justify="space-between" wrap="nowrap">
                 <Group gap="xs" >
                   <ThemeIcon size={'lg'} variant='light'>
                     <IconDatabase />
                   </ThemeIcon>
-                  
+
                   <Stack gap={0}>
                     <Group gap={5}>
                       <Text size="sm" fw={600} truncate>
@@ -94,7 +97,24 @@ export function Navbar({
         )}
       </AppShell.Section>
 
-      <AppShell.Section grow component={ScrollArea}>
+      {isConnected && (
+        <AppShell.Section mb="md">
+          <TextInput
+            placeholder="Search tables..."
+            leftSection={<IconSearch size={16} />}
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.currentTarget.value)}
+            size="xs"
+          />
+        </AppShell.Section>
+      )}
+
+      <AppShell.Section
+        grow
+        component={ScrollArea}
+        type="hover"
+        viewportProps={{ style: { overflowX: 'hidden' } }}
+      >
         {isConnected ? (
           <TablesList
             tables={tables}
@@ -102,6 +122,7 @@ export function Navbar({
             isConnected={isConnected}
             selectedTable={selectedTable}
             onSelectTable={onSelectTable}
+            searchQuery={tableSearch}
           />
         ) : (
           <Stack gap="sm">
@@ -111,11 +132,11 @@ export function Navbar({
               </Text>
             ) : (
               connections.map((conn) => (
-                <Card key={conn.id} withBorder padding="sm" radius="md">
+                <Card key={conn.id} withBorder padding="sm">
                   <Stack gap="sm">
                     <Group justify="space-between" wrap="nowrap">
                       <Group gap="xs" style={{ minWidth: 0 }}>
-                        <IconDatabase size={18} style={{ flexShrink: 0 }} color="var(--mantine-color-blue-6)" />
+                        <IconDatabase size={18} />
                         <Text size="sm" fw={500} truncate>
                           {conn.name}
                         </Text>
@@ -124,7 +145,6 @@ export function Navbar({
                         <ActionIcon
                           variant="subtle"
                           size="sm"
-                          color="gray"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditConnection(conn);
