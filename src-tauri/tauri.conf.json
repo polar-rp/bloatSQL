@@ -1,8 +1,6 @@
 {
   "productName": "BloatSQL",
-  "version": "0.0.1",
   "identifier": "com.bloatsql.app",
-  "description": "A modern MariaDB/MySQL client built with Tauri",
   "build": {
     "beforeDevCommand": "npm run dev:vite",
     "beforeBuildCommand": "vite build",
