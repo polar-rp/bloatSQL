@@ -54,14 +54,12 @@ export function ExportModal({ opened, onClose, onExport, databaseName }: ExportM
     },
   });
 
-  // Initialize selected tables when tables are loaded
   useEffect(() => {
     if (tables && tables.length > 0 && form.values.selectedTables.length === 0) {
       form.setFieldValue('selectedTables', [...tables]);
     }
   }, [tables]);
 
-  // Reset fileName when modal opens
   useEffect(() => {
     if (opened) {
       form.setFieldValue('fileName', `${databaseName}_export_${new Date().getTime()}.sql`);

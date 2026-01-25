@@ -48,7 +48,6 @@ impl ConnectionsStore {
             )",
             [],
         )?;
-        // Migration for existing databases
         let _ = db.execute("ALTER TABLE connections ADD COLUMN ssl_mode TEXT NOT NULL DEFAULT 'preferred'", []);
         Ok(())
     }
@@ -162,8 +161,6 @@ impl ConnectionsStore {
         Ok(rows_deleted > 0)
     }
 
-    // Simple password encryption/decryption (base64)
-    // In production, use proper encryption like AES
     fn encrypt_password(&self, password: &str) -> String {
         use base64::Engine;
         let engine = base64::engine::general_purpose::STANDARD;

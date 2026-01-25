@@ -36,11 +36,9 @@ export function ErrorBoundary({ children }: ErrorBoundaryProps) {
     <ReactErrorBoundary
       FallbackComponent={ErrorFallback}
       onReset={() => {
-        // Reset any state or reload the app
         window.location.reload();
       }}
       onError={(error, errorInfo) => {
-        // Log error to console in development
         console.error('Error caught by boundary:', error, errorInfo);
       }}
     >

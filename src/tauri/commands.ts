@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Connection, QueryResult, ExportOptions, TableColumn } from '../types/database';
 
-// Backend connection type (snake_case)
 interface BackendConnection {
   id: string;
   name: string;
@@ -14,7 +13,6 @@ interface BackendConnection {
   ssl_mode: string;
 }
 
-// Backend export options type (snake_case)
 interface BackendExportOptions {
   include_drop: boolean;
   include_create: boolean;
@@ -25,7 +23,6 @@ interface BackendExportOptions {
   max_insert_size: number;
 }
 
-// Backend table column type (snake_case)
 interface BackendTableColumn {
   name: string;
   data_type: string;
@@ -33,7 +30,6 @@ interface BackendTableColumn {
   is_primary_key: boolean;
 }
 
-// Convert backend column to frontend format
 function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
   return {
     name: col.name,
@@ -43,7 +39,6 @@ function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
   };
 }
 
-// Convert frontend Connection to backend format
 function toBackendConnection(conn: Connection | Omit<Connection, 'id'> & { id?: string }): BackendConnection {
   return {
     id: conn.id || crypto.randomUUID(),
@@ -58,7 +53,6 @@ function toBackendConnection(conn: Connection | Omit<Connection, 'id'> & { id?: 
   };
 }
 
-// Convert backend connection to frontend format
 function toFrontendConnection(conn: BackendConnection): Connection {
   return {
     id: conn.id,
@@ -73,7 +67,6 @@ function toFrontendConnection(conn: BackendConnection): Connection {
   };
 }
 
-// Convert frontend ExportOptions to backend format
 function toBackendExportOptions(options: ExportOptions): BackendExportOptions {
   return {
     include_drop: options.includeDrop,
@@ -87,7 +80,6 @@ function toBackendExportOptions(options: ExportOptions): BackendExportOptions {
 }
 
 export const tauriCommands = {
-  // Connection management
   async saveConnection(conn: Omit<Connection, 'id'> & { id?: string }): Promise<Connection> {
     const backendConn = toBackendConnection(conn);
     await invoke('save_connection', { conn: backendConn });
@@ -103,7 +95,6 @@ export const tauriCommands = {
     await invoke('delete_connection', { id });
   },
 
-  // Connection lifecycle
   async testConnection(conn: Connection): Promise<void> {
     await invoke('test_connection', { conn: toBackendConnection(conn) });
   },
@@ -116,7 +107,6 @@ export const tauriCommands = {
     await invoke('disconnect_from_database');
   },
 
-  // Query operations
   async executeQuery(query: string): Promise<QueryResult> {
     return invoke<QueryResult>('execute_query', { query });
   },
@@ -130,9 +120,12 @@ export const tauriCommands = {
     return rawColumns.map(toFrontendTableColumn);
   },
 
-  // Export
   async exportDatabase(options: ExportOptions): Promise<void> {
     await invoke('export_database', { options: toBackendExportOptions(options) });
+  },
+
+  async closeSplashscreen(): Promise<void> {
+    await invoke('close_splashscreen');
   },
 };
 

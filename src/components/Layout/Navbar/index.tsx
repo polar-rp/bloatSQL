@@ -1,9 +1,10 @@
-import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon, TextInput } from '@mantine/core';
-import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug, IconSearch } from '@tabler/icons-react';
+import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon, TextInput, SegmentedControl, Code, Badge, rem } from '@mantine/core';
+import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug, IconSearch, IconTable, IconHistory } from '@tabler/icons-react';
 import { Connection } from '../../../types/database';
 import { TablesList } from './TablesList';
 import { Led } from '@gfazioli/mantine-led';
 import { useState } from 'react';
+import { HistoryItem } from '../Aside';
 
 interface NavbarProps {
   connections: Connection[];
@@ -12,12 +13,14 @@ interface NavbarProps {
   connectionLoading: boolean;
   isLoadingTables: boolean;
   selectedTable: string | null;
+  queryHistory: HistoryItem[];
   onNewConnection: () => void;
   onConnect: (connection: Connection) => void;
   onDisconnect: () => void;
   onEditConnection: (connection: Connection) => void;
   onDeleteConnection: (id: string) => void;
   onSelectTable: (tableName: string) => void;
+  onLoadQuery: (query: string) => void;
 }
 
 export function Navbar({
@@ -27,14 +30,17 @@ export function Navbar({
   connectionLoading,
   isLoadingTables,
   selectedTable,
+  queryHistory,
   onNewConnection,
   onConnect,
   onDisconnect,
   onEditConnection,
   onDeleteConnection,
   onSelectTable,
+  onLoadQuery,
 }: NavbarProps) {
   const [tableSearch, setTableSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'tables' | 'history'>('tables');
 
   if (connectionLoading) {
     return (
@@ -98,15 +104,46 @@ export function Navbar({
       </AppShell.Section>
 
       {isConnected && (
-        <AppShell.Section mb="md">
-          <TextInput
-            placeholder="Search tables..."
-            leftSection={<IconSearch size={16} />}
-            value={tableSearch}
-            onChange={(e) => setTableSearch(e.currentTarget.value)}
-            size="xs"
-          />
-        </AppShell.Section>
+        <>
+          <AppShell.Section mb="sm">
+            <TextInput
+              placeholder="Search tables..."
+              leftSection={<IconSearch size={16} />}
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.currentTarget.value)}
+              size="xs"
+            />
+          </AppShell.Section>
+
+          <AppShell.Section mb="md">
+            <SegmentedControl
+              fullWidth
+              size="xs"
+              value={activeTab}
+              onChange={(value) => setActiveTab(value as 'tables' | 'history')}
+              data={[
+                {
+                  value: 'tables',
+                  label: (
+                    <Center style={{ gap: 10 }}>
+                      <IconTable size={14} />
+                      <span>Tables</span>
+                    </Center>
+                  ),
+                },
+                {
+                  value: 'history',
+                  label: (
+                    <Center style={{ gap: 10 }}>
+                      <IconHistory size={14} />
+                      <span>History</span>
+                    </Center>
+                  ),
+                },
+              ]}
+            />
+          </AppShell.Section>
+        </>
       )}
 
       <AppShell.Section
@@ -116,14 +153,56 @@ export function Navbar({
         viewportProps={{ style: { overflowX: 'hidden' } }}
       >
         {isConnected ? (
-          <TablesList
-            tables={tables}
-            isLoadingTables={isLoadingTables}
-            isConnected={isConnected}
-            selectedTable={selectedTable}
-            onSelectTable={onSelectTable}
-            searchQuery={tableSearch}
-          />
+          activeTab === 'tables' ? (
+            <TablesList
+              tables={tables}
+              isLoadingTables={isLoadingTables}
+              isConnected={isConnected}
+              selectedTable={selectedTable}
+              onSelectTable={onSelectTable}
+              searchQuery={tableSearch}
+            />
+          ) : (
+            <Stack gap="xs">
+              {queryHistory.length === 0 ? (
+                <Text size="sm" c="dimmed" ta="center" py="xl">
+                  No query history yet
+                </Text>
+              ) : (
+                queryHistory.map((item, idx) => (
+                  <Card
+                    key={idx}
+                    p="xs"
+                    withBorder
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => onLoadQuery(item.query)}
+                  >
+                    <Stack gap={4}>
+                      <Code
+                        block
+                        style={{
+                          fontSize: rem(11),
+                          maxHeight: rem(60),
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {item.query.slice(0, 100)}
+                        {item.query.length > 100 && '...'}
+                      </Code>
+                      <Group gap="xs" justify="space-between">
+                        <Text size="xs" c="dimmed">
+                          {item.timestamp.toLocaleTimeString()}
+                        </Text>
+                        <Badge size="xs" variant="light">
+                          {item.executionTime}ms
+                        </Badge>
+                      </Group>
+                    </Stack>
+                  </Card>
+                ))
+              )}
+            </Stack>
+          )
         ) : (
           <Stack gap="sm">
             {connections.length === 0 ? (

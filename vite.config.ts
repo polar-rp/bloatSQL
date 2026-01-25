@@ -29,6 +29,10 @@ export default defineConfig({
     sourcemap: !!process.env.TAURI_DEBUG,
     // Code splitting for better caching and smaller initial bundle
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        splashscreen: path.resolve(__dirname, 'splashscreen.html'),
+      },
       output: {
         manualChunks: {
           // UI framework - changes rarely

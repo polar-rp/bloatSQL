@@ -68,8 +68,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     if (!importUrl) return;
 
     try {
-      // Basic parsing for mysql://user:pass@host:port/db
-      // Protocol is ignored for now as we force MariaDB
       const url = new URL(importUrl.includes('://') ? importUrl : `mysql://${importUrl}`);
 
       const values: Partial<FormValues> = {};
@@ -78,9 +76,8 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
       if (url.port) values.port = parseInt(url.port, 10);
       if (url.username) values.username = url.username;
       if (url.password) values.password = url.password;
-      if (url.pathname && url.pathname.length > 1) values.database = url.pathname.substring(1); // Remove leading slash
+      if (url.pathname && url.pathname.length > 1) values.database = url.pathname.substring(1);
 
-      // Try to detect SSL mode from params (generic approach)
       const sslParam = url.searchParams.get('ssl-mode') || url.searchParams.get('ssl');
       if (sslParam) {
         const mode = sslParam.toLowerCase();
@@ -89,7 +86,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
         }
       }
 
-      // Auto-generate name if empty
       if (!form.values.name && values.host) {
         values.name = values.database ? `${values.database} on ${values.host}` : values.host;
       }

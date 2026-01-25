@@ -62,7 +62,7 @@ export interface ExportOptions {
   selectedTables: string[];
   outputPath: string;
   fileName: string;
-  maxInsertSize: number; // Maximum number of rows per INSERT statement
+  maxInsertSize: number;
 }
 
 export interface TableColumn {

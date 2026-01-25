@@ -16,7 +16,6 @@ interface ExportActions {
 
 type ExportStore = ExportState & ExportActions;
 
-// Store timeout ID for cleanup
 let successTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 export const useExportStore = create<ExportStore>((set) => ({
@@ -33,12 +32,10 @@ export const useExportStore = create<ExportStore>((set) => ({
         successMessage: `Database exported successfully to ${options.outputPath}/${options.fileName}`,
       });
 
-      // Clear any existing timeout to prevent memory leaks
       if (successTimeoutId) {
         clearTimeout(successTimeoutId);
       }
 
-      // Set new timeout and store reference
       successTimeoutId = setTimeout(() => {
         set({ successMessage: null });
         successTimeoutId = null;
@@ -57,7 +54,6 @@ export const useExportStore = create<ExportStore>((set) => ({
   },
 
   clearSuccess: () => {
-    // Clear timeout when manually clearing success
     if (successTimeoutId) {
       clearTimeout(successTimeoutId);
       successTimeoutId = null;
@@ -66,7 +62,6 @@ export const useExportStore = create<ExportStore>((set) => ({
   },
 }));
 
-// Granular selectors
 export const useIsExporting = () => useExportStore((s) => s.isExporting);
 export const useExportError = () => useExportStore((s) => s.error);
 export const useExportSuccessMessage = () => useExportStore((s) => s.successMessage);

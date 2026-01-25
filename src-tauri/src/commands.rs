@@ -2,6 +2,7 @@ use crate::db::{DatabaseConnection, MariaDbConnection, TableColumn};
 use crate::storage::{ConnectionsStore, StoredConnection};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tauri::{Manager, WebviewWindow};
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +50,16 @@ impl From<crate::db::QueryResult> for QueryResult {
 }
 
 pub type ActiveConnection = Arc<Mutex<Option<Arc<dyn DatabaseConnection>>>>;
+
+#[tauri::command]
+pub async fn close_splashscreen(window: WebviewWindow) {
+    if let Some(splashscreen) = window.get_webview_window("splashscreen") {
+        splashscreen.close().unwrap();
+    }
+    if let Some(main) = window.get_webview_window("main") {
+        main.show().unwrap();
+    }
+}
 
 #[tauri::command]
 pub async fn save_connection(

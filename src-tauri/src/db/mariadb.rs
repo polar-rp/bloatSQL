@@ -4,11 +4,8 @@ use mysql_async::{prelude::*, Conn, Opts, OptsBuilder, Pool, PoolConstraints, Po
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// MariaDB/MySQL connection using connection pooling for better performance.
-/// Pool automatically manages connection reuse and handles reconnection.
 pub struct MariaDbConnection {
     pool: Pool,
-    // Keep a dedicated connection for operations that need transaction consistency
     dedicated_conn: Arc<Mutex<Option<Conn>>>,
 }
 
@@ -44,7 +41,6 @@ impl MariaDbConnection {
                 .into()
         };
 
-        // Try SSL first if requested
         if ssl_mode == "required" || ssl_mode == "preferred" {
             let opts = make_opts(true);
             let pool = Pool::new(opts);
@@ -57,19 +53,16 @@ impl MariaDbConnection {
                     });
                 }
                 Err(e) => {
-                    // If required, fail immediately
                     if ssl_mode == "required" {
                         return Err(QueryError {
                             message: format!("SSL Connection failed: {}", e),
                             code: None,
                         });
                     }
-                    // If preferred, fall through to try non-SSL
                 }
             }
         }
 
-        // Fallback to non-SSL (or if disabled)
         let opts = make_opts(false);
         let pool = Pool::new(opts);
         
@@ -84,7 +77,6 @@ impl MariaDbConnection {
         })
     }
 
-    /// Get a connection from the pool
     async fn get_conn(&self) -> DbResult<Conn> {
         self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
@@ -92,7 +84,6 @@ impl MariaDbConnection {
         })
     }
 
-    /// Helper to convert MySQL value to JSON
     #[inline]
     fn mysql_value_to_json(value: mysql_async::Value) -> serde_json::Value {
         match value {
@@ -124,7 +115,6 @@ impl MariaDbConnection {
         }
     }
 
-    /// Helper to convert MySQL value to SQL string for export
     #[inline]
     fn mysql_value_to_sql(value: mysql_async::Value) -> String {
         match value {
@@ -202,7 +192,6 @@ impl DatabaseConnection for MariaDbConnection {
             .map(|cols| cols.iter().map(|col| col.name_str().to_string()).collect())
             .unwrap_or_default();
 
-        // Pre-allocate with estimated capacity
         let mut result_rows: Vec<serde_json::Value> = Vec::with_capacity(1000);
         let mut row_count = 0;
         let column_count = columns.len();
@@ -214,7 +203,6 @@ impl DatabaseConnection for MariaDbConnection {
         })? {
             row_count += 1;
 
-            // Pre-allocate map with known capacity
             let mut row_map = serde_json::Map::with_capacity(column_count);
 
             for (i, col) in columns.iter().enumerate() {
@@ -290,11 +278,9 @@ impl DatabaseConnection for MariaDbConnection {
     }
 
     async fn disconnect(&self) -> DbResult<()> {
-        // Clear the dedicated connection
         let mut dedicated = self.dedicated_conn.lock().await;
         *dedicated = None;
 
-        // Disconnect the pool (drops all connections)
         self.pool.clone().disconnect().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: None,
@@ -313,12 +299,9 @@ impl DatabaseConnection for MariaDbConnection {
     ) -> DbResult<String> {
         let mut conn = self.get_conn().await?;
 
-        // Estimate initial capacity based on typical export size
-        let mut sql_content = String::with_capacity(1024 * 1024); // 1MB initial capacity
+        let mut sql_content = String::with_capacity(1024 * 1024);
 
-        // Get tables to export
         let tables_to_export = if selected_tables.is_empty() {
-            // Export all tables
             let result = conn.query_iter("SHOW TABLES").await.map_err(|e| QueryError {
                 message: e.to_string(),
                 code: None,
@@ -338,16 +321,13 @@ impl DatabaseConnection for MariaDbConnection {
             selected_tables.to_vec()
         };
 
-        // Process each table
         for table_name in tables_to_export {
             sql_content.push_str(&format!("\n-- Table: {}\n", table_name));
 
-            // DROP TABLE
             if include_drop {
                 sql_content.push_str(&format!("DROP TABLE IF EXISTS `{}`;\n", table_name));
             }
 
-            // CREATE TABLE
             if include_create {
                 let create_query = format!("SHOW CREATE TABLE `{}`", table_name);
                 let create_result = conn.query_iter(create_query.as_str()).await.map_err(|e| QueryError {
@@ -366,9 +346,7 @@ impl DatabaseConnection for MariaDbConnection {
                 }
             }
 
-            // Export data with streaming/batching
             if data_mode != "no_data" {
-                // Use pagination to avoid loading entire table into memory
                 const BATCH_SIZE: usize = 10000;
                 let mut offset: usize = 0;
 
@@ -406,7 +384,6 @@ impl DatabaseConnection for MariaDbConnection {
 
                         row_buffer.push(values);
 
-                        // Flush buffer when it reaches max_insert_size
                         if row_buffer.len() >= max_insert_size {
                             sql_content.push_str(&Self::format_insert_statement(
                                 &table_name,
@@ -418,7 +395,6 @@ impl DatabaseConnection for MariaDbConnection {
                         }
                     }
 
-                    // Flush remaining rows in buffer
                     if !row_buffer.is_empty() {
                         sql_content.push_str(&Self::format_insert_statement(
                             &table_name,
@@ -428,7 +404,6 @@ impl DatabaseConnection for MariaDbConnection {
                         ));
                     }
 
-                    // If we got fewer rows than BATCH_SIZE, we've reached the end
                     if rows_in_batch < BATCH_SIZE {
                         break;
                     }

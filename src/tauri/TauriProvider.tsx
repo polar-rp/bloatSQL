@@ -25,18 +25,14 @@ export function TauriProvider({ children }: TauriProviderProps) {
   const [appWindow] = useState(() => getCurrentWindow());
 
   useEffect(() => {
-    // Get OS type (synchronous in Tauri v2)
     setOs(osType());
 
-    // Setup window state listeners
     const setupListeners = async () => {
       try {
-        // Get initial state
         setIsFullScreen(await appWindow.isFullscreen());
         setIsMaximized(await appWindow.isMaximized());
         setScaleFactor(await appWindow.scaleFactor());
 
-        // Listen for changes using tauri:// events (more reliable than onResized/onMoved)
         const handleWindowStateChange = async () => {
           setIsFullScreen(await appWindow.isFullscreen());
           setIsMaximized(await appWindow.isMaximized());
@@ -94,7 +90,6 @@ export function useTauriContext() {
   return context;
 }
 
-// Export window control helpers
 export function useWindowControls() {
   const { appWindow, refreshWindowState } = useTauriContext();
 
@@ -102,7 +97,6 @@ export function useWindowControls() {
     minimize: () => appWindow.minimize(),
     toggleMaximize: async () => {
       await appWindow.toggleMaximize();
-      // Small delay to let the window state update
       setTimeout(refreshWindowState, 50);
     },
     close: () => appWindow.close(),

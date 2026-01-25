@@ -22,12 +22,24 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "resizable": true,
         "title": "BloatSQL",
         "width": 1400,
         "height": 900,
-        "decorations": false
+        "decorations": false,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "url": "splashscreen.html",
+        "width": 400,
+        "height": 400,
+        "decorations": false,
+        "transparent": true,
+        "center": true,
+        "alwaysOnTop": true
       }
     ],
     "security": {

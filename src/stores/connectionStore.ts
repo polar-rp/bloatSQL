@@ -124,7 +124,6 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   },
 }));
 
-// Granular selectors for performance
 export const useConnections = () => useConnectionStore((s) => s.connections);
 export const useActiveConnection = () => useConnectionStore((s) => s.activeConnection);
 export const useConnectionLoading = () => useConnectionStore((s) => s.isLoading);

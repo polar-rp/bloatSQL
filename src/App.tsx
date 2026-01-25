@@ -54,9 +54,9 @@ import {
   useCurrentTabQuery,
 } from "./stores/tabsStore";
 import { ExportModal } from "./components/ExportModal";
+import { tauriCommands } from "./tauri/commands";
 
 function App() {
-  // Connection store - granular selectors
   const connections = useConnections();
   const activeConnection = useActiveConnection();
   const connectionLoading = useConnectionLoading();
@@ -65,7 +65,6 @@ function App() {
   const disconnectFromDatabase = useDisconnectFromDatabase();
   const deleteConnection = useDeleteConnection();
 
-  // Query store - granular selectors
   const queryText = useQueryText();
   const setQueryText = useSetQueryText();
   const results = useQueryResults();
@@ -79,19 +78,16 @@ function App() {
   const selectTable = useSelectTable();
   const clearError = useClearQueryError();
 
-  // Export store - granular selectors
   const exportDatabase = useExportDatabase();
   const exportError = useExportError();
   const successMessage = useExportSuccessMessage();
   const clearExportError = useClearExportError();
   const clearSuccess = useClearExportSuccess();
 
-  // Layout state
   const [navbarCollapsed, setNavbarCollapsed] = useState(false);
   const [asideCollapsed, setAsideCollapsed] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
-  // Modal state with useDisclosure
   const [
     connectionFormOpened,
     { open: openConnectionForm, close: closeConnectionForm },
@@ -104,31 +100,29 @@ function App() {
     null,
   );
 
-  // Tabs store - granular selectors
   const activeTab = useActiveTab();
   const addTableTab = useAddTableTab();
   const updateTabQuery = useUpdateTabQuery();
   const currentTabQuery = useCurrentTabQuery();
 
-  // History state - use useRef-backed state to avoid re-renders on history updates
   const [queryHistory, setQueryHistory] = useState<HistoryItem[]>([]);
 
-  // React 19 transition for non-blocking table selection
   const [isTableTransitionPending, startTableTransition] = useTransition();
 
-  // Load connections on mount
+  useEffect(() => {
+    tauriCommands.closeSplashscreen();
+  }, []);
+
   useEffect(() => {
     loadConnections();
   }, [loadConnections]);
 
-  // Load tables when connected
   useEffect(() => {
     if (activeConnection) {
       loadTables();
     }
   }, [activeConnection, loadTables]);
 
-  // Show notifications for export results
   useEffect(() => {
     if (successMessage) {
       notifications.show({
@@ -151,12 +145,10 @@ function App() {
     }
   }, [exportError, clearExportError]);
 
-  // Sync queryText with active tab when switching tabs
   useEffect(() => {
     setQueryText(currentTabQuery);
   }, [activeTab, currentTabQuery, setQueryText]);
 
-  // Sync tab query with store when editing
   const handleTabQueryUpdate = useCallback(
     (tabId: string, query: string) => {
       updateTabQuery(tabId, query);
@@ -172,7 +164,6 @@ function App() {
 
     await executeQuery();
 
-    // Add to history after execution
     const currentTime = lastExecutionTime;
     if (currentTime !== null) {
       setQueryHistory((prev) =>
@@ -245,13 +236,10 @@ function App() {
 
   const handleTableSelect = useCallback(
     (tableName: string) => {
-      // Immediate UI update (high priority)
       setSelectedTable(tableName);
 
-      // Create new tab with the table query
       addTableTab(tableName);
 
-      // Defer data loading (low priority) - keeps UI responsive
       startTableTransition(() => {
         selectTable(tableName);
       });
@@ -273,7 +261,6 @@ function App() {
     [handleTabQueryUpdate, activeTab],
   );
 
-  // Memoize navbar toggle handler
   const handleToggleNavbar = useCallback(() => {
     setNavbarCollapsed((prev) => !prev);
   }, []);
@@ -327,19 +314,19 @@ function App() {
             connectionLoading={connectionLoading}
             isLoadingTables={isLoadingTables}
             selectedTable={selectedTable}
+            queryHistory={queryHistory}
             onNewConnection={openConnectionForm}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
             onEditConnection={handleEditConnection}
             onDeleteConnection={handleDeleteConnection}
             onSelectTable={handleTableSelect}
+            onLoadQuery={loadQueryFromHistory}
           />
         </AppShell.Navbar>
 
         <AppShell.Aside p="md">
           <Aside
-            queryHistory={queryHistory}
-            onLoadQuery={loadQueryFromHistory}
             onCollapse={handleCollapseAside}
           />
         </AppShell.Aside>

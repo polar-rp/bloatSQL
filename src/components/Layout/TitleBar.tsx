@@ -17,7 +17,7 @@ import { Connection } from '../../types/database';
 import classes from './TitleBar.module.css';
 import { Led } from '@gfazioli/mantine-led';
 import '@gfazioli/mantine-led/styles.layer.css';
-import appIcon from '../../assets/icon.png';
+import appIcon from '../../assets/BloatSQL1024x1024Logo.png';
 import { useDisclosure } from '@mantine/hooks';
 import { SettingsModal } from '../SettingsModal/SettingsModal';
 

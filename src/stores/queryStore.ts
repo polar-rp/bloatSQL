@@ -120,7 +120,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
   },
 }));
 
-// Granular selectors for performance - prevents unnecessary re-renders
 export const useQueryText = () => useQueryStore((s) => s.queryText);
 export const useSetQueryText = () => useQueryStore((s) => s.setQueryText);
 export const useQueryResults = () => useQueryStore((s) => s.results);

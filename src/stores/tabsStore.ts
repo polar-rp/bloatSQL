@@ -92,7 +92,6 @@ export const useTabsStore = create<TabsStore>((set, get) => ({
   },
 }));
 
-// Granular selectors for performance
 export const useTabs = () => useTabsStore((s) => s.tabs);
 export const useActiveTab = () => useTabsStore((s) => s.activeTab);
 export const useSetActiveTab = () => useTabsStore((s) => s.setActiveTab);
@@ -102,7 +101,6 @@ export const useCloseTab = () => useTabsStore((s) => s.closeTab);
 export const useUpdateTabQuery = () => useTabsStore((s) => s.updateTabQuery);
 export const useSetTabs = () => useTabsStore((s) => s.setTabs);
 
-// Derived selector - gets current tab's query
 export const useCurrentTabQuery = () =>
   useTabsStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTab);

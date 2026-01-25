@@ -26,7 +26,6 @@ interface TablesListProps {
   searchQuery: string;
 }
 
-// Memoized column item to prevent re-renders
 const ColumnItem = memo(function ColumnItem({ column }: { column: TableColumn }) {
   const icon = column.isPrimaryKey
     ? <IconKey size={12} color="var(--mantine-primary-color-filled)" />
@@ -75,7 +74,6 @@ const ColumnItem = memo(function ColumnItem({ column }: { column: TableColumn })
   );
 });
 
-// Memoized table item
 const TableItem = memo(function TableItem({
   table,
   isSelected,
