@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(tree:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

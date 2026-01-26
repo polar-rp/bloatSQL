@@ -5,6 +5,8 @@ import {
   IconLayoutSidebar,
   IconLayoutSidebarRightFilled,
   IconLayoutSidebarRight,
+  IconLayoutBottombarFilled,
+  IconLayoutBottombar,
   IconMinus,
   IconPlayerPlay,
   IconSquare,
@@ -12,14 +14,14 @@ import {
   IconX,
   IconSettings
 } from '@tabler/icons-react';
-import { useWindowControls, useTauriContext } from '../../tauri/TauriProvider';
-import { Connection } from '../../types/database';
+import { useWindowControls, useTauriContext } from '../../../tauri/TauriProvider';
+import { Connection } from '../../../types/database';
 import classes from './TitleBar.module.css';
 import { Led } from '@gfazioli/mantine-led';
 import '@gfazioli/mantine-led/styles.layer.css';
-import appIcon from '../../assets/BloatSQL1024x1024Logo.png';
+import appIcon from '../../../assets/BloatSQL1024x1024Logo.png';
 import { useDisclosure } from '@mantine/hooks';
-import { SettingsModal } from '../SettingsModal/SettingsModal';
+import { SettingsModal } from '../../modals';
 
 interface TitleBarProps {
   activeConnection: Connection | null;
@@ -27,8 +29,10 @@ interface TitleBarProps {
   onOpenExportModal: () => void;
   navbarCollapsed: boolean;
   asideCollapsed: boolean;
+  footerCollapsed: boolean;
   onToggleNavbar: () => void;
   onToggleAside: () => void;
+  onToggleFooter: () => void;
 }
 
 export function TitleBar({
@@ -37,8 +41,10 @@ export function TitleBar({
   onOpenExportModal,
   navbarCollapsed,
   asideCollapsed,
+  footerCollapsed,
   onToggleNavbar,
   onToggleAside,
+  onToggleFooter,
 }: TitleBarProps) {
   const { minimize, toggleMaximize, close } = useWindowControls();
   const { isMaximized } = useTauriContext();
@@ -144,7 +150,19 @@ export function TitleBar({
               <IconLayoutSidebarFilled color='var(--mantine-color-text)' />
             )}
           </ActionIcon>
-
+          <ActionIcon
+            onClick={onToggleFooter}
+            variant="subtle"
+            color="gray"
+            size="sm"
+            aria-label={footerCollapsed ? "Expand footer" : "Collapse footer"}
+          >
+            {footerCollapsed ? (
+              <IconLayoutBottombar color='var(--mantine-color-text)' />
+            ) : (
+              <IconLayoutBottombarFilled color='var(--mantine-color-text)' />
+            )}
+          </ActionIcon>
           <ActionIcon
             onClick={onToggleAside}
             variant="subtle"
@@ -159,8 +177,6 @@ export function TitleBar({
             )}
           </ActionIcon>
         </Group>
-
-
 
         <Group gap={0} wrap="nowrap" h="100%">
           <UnstyledButton

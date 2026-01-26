@@ -5,8 +5,6 @@ import App from './App';
 import '@mantine/core/styles.layer.css';
 import '@mantine/notifications/styles.layer.css';
 
-import 'mantine-datatable/styles.layer.css';
-
 createRoot(document.getElementById('root')!).render(
   <Providers>
     <App />

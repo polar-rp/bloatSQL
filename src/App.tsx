@@ -5,7 +5,6 @@ import {
   useTransition,
   useMemo,
 } from "react";
-import { AppShell, Box } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
@@ -45,15 +44,13 @@ import {
   Aside,
   HistoryItem,
   MainContent,
+  AppLayout,
 } from "./components/Layout";
 import { ConnectionModal } from "./components/ConnectionManager";
 import {
-  useActiveTab,
-  useAddTableTab,
-  useUpdateTabQuery,
-  useCurrentTabQuery,
-} from "./stores/tabsStore";
-import { ExportModal } from "./components/ExportModal";
+  useSetSelectedTable as useSetTableViewSelected,
+} from "./stores/tableViewStore";
+import { ExportModal } from "./components/modals";
 import { tauriCommands } from "./tauri/commands";
 
 function App() {
@@ -86,6 +83,7 @@ function App() {
 
   const [navbarCollapsed, setNavbarCollapsed] = useState(false);
   const [asideCollapsed, setAsideCollapsed] = useState(false);
+  const [footerCollapsed, setFooterCollapsed] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   const [
@@ -100,10 +98,7 @@ function App() {
     null,
   );
 
-  const activeTab = useActiveTab();
-  const addTableTab = useAddTableTab();
-  const updateTabQuery = useUpdateTabQuery();
-  const currentTabQuery = useCurrentTabQuery();
+  const setTableViewSelected = useSetTableViewSelected();
 
   const [queryHistory, setQueryHistory] = useState<HistoryItem[]>([]);
 
@@ -145,19 +140,7 @@ function App() {
     }
   }, [exportError, clearExportError]);
 
-  useEffect(() => {
-    setQueryText(currentTabQuery);
-  }, [activeTab, currentTabQuery, setQueryText]);
-
-  const handleTabQueryUpdate = useCallback(
-    (tabId: string, query: string) => {
-      updateTabQuery(tabId, query);
-      if (tabId === activeTab) {
-        setQueryText(query);
-      }
-    },
-    [updateTabQuery, activeTab, setQueryText],
-  );
+  // queryText is managed by queryStore
 
   const handleExecute = useCallback(async () => {
     if (!activeConnection) return;
@@ -237,14 +220,13 @@ function App() {
   const handleTableSelect = useCallback(
     (tableName: string) => {
       setSelectedTable(tableName);
-
-      addTableTab(tableName);
+      setTableViewSelected(tableName);
 
       startTableTransition(() => {
         selectTable(tableName);
       });
     },
-    [selectTable, addTableTab],
+    [selectTable, setTableViewSelected],
   );
 
   const handleExport = useCallback(
@@ -256,9 +238,9 @@ function App() {
 
   const loadQueryFromHistory = useCallback(
     (query: string) => {
-      handleTabQueryUpdate(activeTab, query);
+      setQueryText(query);
     },
-    [handleTabQueryUpdate, activeTab],
+    [setQueryText],
   );
 
   const handleToggleNavbar = useCallback(() => {
@@ -269,44 +251,39 @@ function App() {
     setAsideCollapsed(true);
   }, []);
 
+  const handleToggleFooter = useCallback(() => {
+    setFooterCollapsed((prev) => !prev);
+  }, []);
+
   const handleQueryChange = useCallback(
     (query: string) => {
-      handleTabQueryUpdate(activeTab, query);
+      setQueryText(query);
     },
-    [handleTabQueryUpdate, activeTab],
+    [setQueryText],
   );
 
   const isConnected = useMemo(() => !!activeConnection, [activeConnection]);
 
   return (
-    <Box h="100%">
-      <AppShell
-        header={{ height: 32 }}
-        navbar={{
-          width: 300,
-          breakpoint: "sm",
-          collapsed: { mobile: navbarCollapsed, desktop: navbarCollapsed },
-        }}
-        aside={{
-          width: 300,
-          breakpoint: "md",
-          collapsed: { mobile: asideCollapsed, desktop: asideCollapsed },
-        }}
-        padding="md"
-      >
-        <AppShell.Header>
+    <>
+      <AppLayout
+        navbarCollapsed={navbarCollapsed}
+        asideCollapsed={asideCollapsed}
+        footerCollapsed={footerCollapsed}
+        header={
           <Header
             activeConnection={activeConnection}
             onExecuteQuery={handleExecute}
             onOpenExportModal={openExportModal}
             navbarCollapsed={navbarCollapsed}
             asideCollapsed={asideCollapsed}
+            footerCollapsed={footerCollapsed}
             onToggleNavbar={handleToggleNavbar}
             onToggleAside={() => setAsideCollapsed(!asideCollapsed)}
+            onToggleFooter={handleToggleFooter}
           />
-        </AppShell.Header>
-
-        <AppShell.Navbar p="md">
+        }
+        navbar={
           <Navbar
             connections={connections}
             activeConnection={activeConnection}
@@ -323,54 +300,40 @@ function App() {
             onSelectTable={handleTableSelect}
             onLoadQuery={loadQueryFromHistory}
           />
-        </AppShell.Navbar>
-
-        <AppShell.Aside p="md">
-          <Aside
-            onCollapse={handleCollapseAside}
-          />
-        </AppShell.Aside>
-
-        <AppShell.Main
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            height:
-              "calc(100vh - var(--app-shell-header-height, 0px) - var(--mantine-spacing-md) * 2)",
-          }}
-        >
-          <MainContent
-            queryText={queryText}
-            handleQueryChange={handleQueryChange}
-            handleExecute={handleExecute}
-            isExecuting={isExecuting}
-            isConnected={isConnected}
-            results={results}
-            error={queryError}
-            clearError={clearError}
-            lastExecutionTime={lastExecutionTime}
-            isTableTransitionPending={isTableTransitionPending}
-          />
-        </AppShell.Main>
-
-        <ConnectionModal
-          opened={connectionFormOpened}
-          onClose={handleCloseConnectionForm}
-          onSuccess={handleConnectionFormSuccess}
-          connection={editingConnection || undefined}
+        }
+        aside={<Aside onCollapse={handleCollapseAside} />}
+      >
+        <MainContent
+          queryText={queryText}
+          handleQueryChange={handleQueryChange}
+          handleExecute={handleExecute}
+          isExecuting={isExecuting}
+          isConnected={isConnected}
+          results={results}
+          error={queryError}
+          clearError={clearError}
+          lastExecutionTime={lastExecutionTime}
+          isTableTransitionPending={isTableTransitionPending}
         />
+      </AppLayout>
 
-        {/* Export Modal */}
-        {activeConnection && (
-          <ExportModal
-            opened={exportModalOpened}
-            onClose={closeExportModal}
-            onExport={handleExport}
-            databaseName={activeConnection.name}
-          />
-        )}
-      </AppShell>
-    </Box>
+      <ConnectionModal
+        opened={connectionFormOpened}
+        onClose={handleCloseConnectionForm}
+        onSuccess={handleConnectionFormSuccess}
+        connection={editingConnection || undefined}
+      />
+
+      {/* Export Modal */}
+      {activeConnection && (
+        <ExportModal
+          opened={exportModalOpened}
+          onClose={closeExportModal}
+          onExport={handleExport}
+          databaseName={activeConnection.name}
+        />
+      )}
+    </>
   );
 }
 

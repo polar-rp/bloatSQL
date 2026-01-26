@@ -1,5 +1,6 @@
-export { TitleBar } from "./TitleBar";
-export { Header } from "./Header";
-export { Navbar } from "./Navbar/index";
-export { Aside, type HistoryItem } from "./Aside";
+export * from "./Header";
+export * from "./Navbar";
+export * from "./Aside";
+export * from "./AppLayout";
 export * from "./MainContent";
+export * from "./Footer";

@@ -1,0 +1,22 @@
+.footer {
+    border-top: 1px solid var(--mantine-color-default-border);
+    background-color: var(--mantine-color-body);
+    transition-property: height, opacity, border;
+    transition-duration: var(--app-shell-transition-duration);
+    transition-timing-function: var(--app-shell-transition-timing-function);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.footerHidden {
+    height: 0;
+    border-top: none;
+    opacity: 0;
+}
+
+.footerVisible {
+    height: 60px;
+    opacity: 1;
+}

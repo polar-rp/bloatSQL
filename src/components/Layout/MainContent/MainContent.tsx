@@ -1,7 +1,3 @@
-import {
-  Box,
-} from "@mantine/core";
-import { EditorTabs } from "../../QueryEditor";
 import { QueryWorkspace } from "../../QueryWorkspace";
 
 type MainContentProps = {
@@ -30,30 +26,16 @@ export function MainContent({
   isTableTransitionPending,
 }: MainContentProps) {
   return (
-    <>
-      <EditorTabs />
-
-      <Box
-        mt="md"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-        }}
-      >
-        <QueryWorkspace
-          query={queryText}
-          onQueryChange={handleQueryChange}
-          onExecute={handleExecute}
-          isExecuting={isExecuting || isTableTransitionPending}
-          isConnected={isConnected}
-          results={results}
-          error={error}
-          onClearError={clearError}
-          lastExecutionTime={lastExecutionTime}
-        />
-      </Box>
-    </>
+    <QueryWorkspace
+      query={queryText}
+      onQueryChange={handleQueryChange}
+      onExecute={handleExecute}
+      isExecuting={isExecuting || isTableTransitionPending}
+      isConnected={isConnected}
+      results={results}
+      error={error}
+      onClearError={clearError}
+      lastExecutionTime={lastExecutionTime}
+    />
   );
 }

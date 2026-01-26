@@ -13,8 +13,8 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
-import { DataExportMode, ExportOptions } from '../types/database';
-import { useQueryStore } from '../stores/queryStore';
+import { DataExportMode, ExportOptions } from '../../../types/database';
+import { useQueryStore } from '../../../stores/queryStore';
 import { open } from '@tauri-apps/plugin-dialog';
 
 interface ExportModalProps {

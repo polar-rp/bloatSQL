@@ -1,7 +1,7 @@
 import {
   Stack,
 } from '@mantine/core';
-import { Connection } from '../../types/database';
+import { Connection } from '../../../types/database';
 import { TitleBar } from './TitleBar';
 
 interface HeaderProps {
@@ -10,8 +10,10 @@ interface HeaderProps {
   onOpenExportModal: () => void;
   navbarCollapsed: boolean;
   asideCollapsed: boolean;
+  footerCollapsed: boolean;
   onToggleNavbar: () => void;
   onToggleAside: () => void;
+  onToggleFooter: () => void;
 }
 
 export function Header({
@@ -20,8 +22,10 @@ export function Header({
   onOpenExportModal,
   navbarCollapsed,
   asideCollapsed,
+  footerCollapsed,
   onToggleNavbar,
   onToggleAside,
+  onToggleFooter,
 }: HeaderProps) {
   return (
     <Stack gap={0} w="100%">
@@ -31,8 +35,10 @@ export function Header({
         onOpenExportModal={onOpenExportModal}
         navbarCollapsed={navbarCollapsed}
         asideCollapsed={asideCollapsed}
+        footerCollapsed={footerCollapsed}
         onToggleNavbar={onToggleNavbar}
         onToggleAside={onToggleAside}
+        onToggleFooter={onToggleFooter}
       />
     </Stack>
   );

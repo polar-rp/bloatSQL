@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { TauriProvider } from './tauri/TauriProvider';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/modals';
 import { useSettingsStore } from './stores/settingsStore';
 
 interface ProvidersProps {

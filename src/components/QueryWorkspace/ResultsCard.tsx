@@ -1,17 +1,14 @@
 import { useMemo } from 'react';
 import {
-  Card,
-  Group,
   Text,
-  Badge,
   Loader,
   Center,
   Alert,
-  Overlay,
   Box,
+  Table,
+  ScrollArea,
 } from '@mantine/core';
-import { DataTable, DataTableColumn } from 'mantine-datatable';
-import { IconTable, IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { QueryResult } from '../../types/database';
 
 interface ResultsCardProps {
@@ -29,60 +26,22 @@ function formatCellValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
-type RowData = Record<string, unknown>;
-
 export function ResultsCard({
   results,
   isExecuting,
   error,
   onClearError,
 }: ResultsCardProps) {
-  const hasResults = results && results.rows.length > 0;
-
-  const columns = useMemo<DataTableColumn<RowData>[]>(() => {
-    if (!results) return [];
-    return results.columns.map((col) => ({
-      accessor: col,
-      title: col,
-      ellipsis: true,
-      width: 200,
-      render: (record) => formatCellValue(record[col]),
-    }));
+  const columns = useMemo(() => {
+    return results?.columns || [];
   }, [results]);
 
-  const records = useMemo(() => {
-    if (!results) return [];
-    return results.rows.map((row, index) => ({
-      ...row,
-      _id: index,
-    })) as RowData[];
+  const rows = useMemo(() => {
+    return results?.rows || [];
   }, [results]);
 
   return (
-    <Card
-      withBorder
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-      }}
-    >
-      <Group justify="space-between" mb="xs">
-        <Group gap="xs">
-          <IconTable size={16} />
-          <Text size="sm" fw={500}>
-            Results
-          </Text>
-          {results && (
-            <Badge variant="light">{results.rowCount} rows</Badge>
-          )}
-          {isExecuting && (
-            <Loader size="xs" />
-          )}
-        </Group>
-        {results && <Badge>{results.executionTime}ms</Badge>}
-      </Group>
-
+    <Box>
       {error && (
         <Alert
           icon={<IconAlertCircle size={16} />}
@@ -96,43 +55,53 @@ export function ResultsCard({
         </Alert>
       )}
 
-      <Box style={{ flex: 1, position: 'relative', minHeight: 0 }}>
-        {isExecuting && hasResults && (
-          <Overlay
-            color="var(--mantine-color-body)"
-            backgroundOpacity={0.6}
-            blur={1}
-            zIndex={10}
-          />
-        )}
-
-        {!results ? (
-          <Center h={200}>
-            {isExecuting ? (
-              <Loader />
-            ) : (
-              <Text c="dimmed">Execute a query to see results</Text>
-            )}
-          </Center>
-        ) : results.rows.length === 0 ? (
-          <Center h={200}>
-            <Text c="dimmed">No data returned</Text>
-          </Center>
-        ) : (
-          <DataTable
-            withTableBorder
+      {!results ? (
+        <Center h={200}>
+          {isExecuting ? (
+            <Loader />
+          ) : (
+            <Text c="dimmed">Execute a query to see results</Text>
+          )}
+        </Center>
+      ) : rows.length === 0 ? (
+        <Center h={200}>
+          <Text c="dimmed">No data returned</Text>
+        </Center>
+      ) : (
+        <ScrollArea>
+          <Table
             striped
             highlightOnHover
-            height="100%"
-            idAccessor="_id"
-            columns={columns}
-            records={records}
-            fetching={isExecuting}
-            ff={'monospace'}
-            fz="sm"
-          />
-        )}
-      </Box>
-    </Card>
+            withTableBorder
+            withColumnBorders
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 'var(--mantine-font-size-sm)',
+              opacity: isExecuting ? 0.6 : 1,
+              pointerEvents: isExecuting ? 'none' : 'auto',
+            }}
+          >
+            <Table.Thead>
+              <Table.Tr>
+                {columns.map((col) => (
+                  <Table.Th key={col}>{col}</Table.Th>
+                ))}
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((row, rowIndex) => (
+                <Table.Tr key={rowIndex}>
+                  {columns.map((col) => (
+                    <Table.Td key={col}>
+                      {formatCellValue(row[col])}
+                    </Table.Td>
+                  ))}
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
+      )}
+    </Box>
   );
 }

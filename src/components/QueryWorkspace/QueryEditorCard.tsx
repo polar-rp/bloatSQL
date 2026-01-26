@@ -22,7 +22,7 @@ interface QueryEditorCardProps {
   isExecuting: boolean;
   isConnected: boolean;
   lastExecutionTime: number | null;
-  editorHeight: number;
+  editorHeight: number | string;
   onToggleHeight: () => void;
 }
 
@@ -68,7 +68,7 @@ export function QueryEditorCard({
             <Kbd size="xs">Ctrl</Kbd> + <Kbd size="xs">Enter</Kbd>
           </Text>
           <ActionIcon variant="subtle" size="sm" onClick={onToggleHeight}>
-            {editorHeight === 250 ? (
+            {editorHeight === '45vh' || editorHeight === 250 ? (
               <IconChevronUp size={16} />
             ) : (
               <IconChevronDown size={16} />
