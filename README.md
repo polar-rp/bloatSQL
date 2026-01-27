@@ -30,7 +30,18 @@ A modern, cross-platform database client built with Tauri, React, and Rust. Bloa
 
 ## Screenshots
 
-> Coming soon
+### Darkmode
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/2932dc73-c4fc-4eb3-94f9-7770bd73e07c" />
+
+### Lightmode
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/4ace2f8a-2a45-4d70-8a95-0823ed122460" />
+
+### Settings
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/20781802-08cf-47c2-aa73-031c606801af" />
+
+### Connect modal
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/8c9ae521-6884-490a-b4db-de15f06a94cc" />
+
 
 ## Tech Stack
 
