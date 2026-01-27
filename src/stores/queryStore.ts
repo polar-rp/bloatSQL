@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { tauriCommands } from '../tauri/commands';
-import { QueryResult } from '../types/database';
+import { QueryResult, DatabaseType } from '../types/database';
+import { useConnectionStore } from './connectionStore';
 
 interface QueryState {
   queryText: string;
@@ -30,6 +31,18 @@ interface QueryActions {
 }
 
 type QueryStore = QueryState & QueryActions;
+
+// Helper function to format table name based on database type
+function formatTableName(tableName: string, dbType: DatabaseType | undefined): string {
+  if (!dbType) return tableName;
+
+  // PostgreSQL uses double quotes, MySQL/MariaDB uses backticks
+  if (dbType === DatabaseType.PostgreSQL) {
+    return `"${tableName}"`;
+  } else {
+    return `\`${tableName}\``;
+  }
+}
 
 export const useQueryStore = create<QueryStore>((set, get) => ({
   queryText: '',
@@ -132,7 +145,9 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       return;
     }
 
-    const query = `SELECT * FROM \`${tableName}\``;
+    const activeConnection = useConnectionStore.getState().activeConnection;
+    const formattedTableName = formatTableName(tableName, activeConnection?.dbType);
+    const query = `SELECT * FROM ${formattedTableName}`;
 
     set({
       queryText: query,
@@ -163,7 +178,9 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
     const { loadedTable } = get();
     if (!loadedTable) return;
 
-    const query = `SELECT * FROM \`${loadedTable}\``;
+    const activeConnection = useConnectionStore.getState().activeConnection;
+    const formattedTableName = formatTableName(loadedTable, activeConnection?.dbType);
+    const query = `SELECT * FROM ${formattedTableName}`;
 
     set({ isExecuting: true, error: null });
 
