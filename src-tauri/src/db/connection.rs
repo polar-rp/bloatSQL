@@ -29,6 +29,9 @@ pub trait DatabaseConnection: Send + Sync {
     async fn test_connection(&self) -> DbResult<()>;
     async fn execute_query(&self, query: &str) -> DbResult<QueryResult>;
     async fn list_tables(&self) -> DbResult<Vec<String>>;
+    async fn list_databases(&self) -> DbResult<Vec<String>>;
+    async fn change_database(&self, database_name: &str) -> DbResult<()>;
+    async fn get_current_database(&self) -> DbResult<String>;
     async fn get_table_columns(&self, table_name: &str) -> DbResult<Vec<TableColumn>>;
     async fn disconnect(&self) -> DbResult<()>;
     async fn export_database_with_options(

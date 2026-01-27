@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import {
   Text,
   Loader,
@@ -6,10 +6,13 @@ import {
   Alert,
   Box,
   Table,
-  ScrollArea,
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { QueryResult } from '../../types/database';
+import { QueryResult, TableColumn } from '../../types/database';
+import { useSelectCell } from '../../stores/editCellStore';
+import { useLoadedTable } from '../../stores/queryStore';
+import { tauriCommands } from '../../tauri/commands';
+import styles from './ResultsCard.module.css';
 
 interface ResultsCardProps {
   results: QueryResult | null;
@@ -32,6 +35,10 @@ export function ResultsCard({
   error,
   onClearError,
 }: ResultsCardProps) {
+  const selectCell = useSelectCell();
+  const loadedTable = useLoadedTable();
+  const [tableColumns, setTableColumns] = useState<TableColumn[]>([]);
+
   const columns = useMemo(() => {
     return results?.columns || [];
   }, [results]);
@@ -40,8 +47,38 @@ export function ResultsCard({
     return results?.rows || [];
   }, [results]);
 
+  useEffect(() => {
+    const loadTableColumns = async () => {
+      if (loadedTable) {
+        try {
+          const cols = await tauriCommands.getTableColumns(loadedTable);
+          setTableColumns(cols);
+        } catch (err) {
+          console.error('Failed to load table columns:', err);
+        }
+      }
+    };
+
+    loadTableColumns();
+  }, [loadedTable]);
+
+  const handleCellClick = (rowIndex: number, columnName: string) => {
+    const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
+    const row = rows[rowIndex];
+
+    selectCell({
+      rowIndex,
+      columnName,
+      focusedColumn: columnName,
+      rowData: row,
+      tableName: loadedTable,
+      primaryKeyColumn: primaryKeyColumn?.name,
+      primaryKeyValue: primaryKeyColumn ? row[primaryKeyColumn.name] : undefined,
+    });
+  };
+
   return (
-    <Box>
+    <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
       {error && (
         <Alert
           icon={<IconAlertCircle size={16} />}
@@ -68,18 +105,14 @@ export function ResultsCard({
           <Text c="dimmed">No data returned</Text>
         </Center>
       ) : (
-        <ScrollArea>
+        <Table.ScrollContainer minWidth={500} className={styles.tableContainer}>
           <Table
             striped
             highlightOnHover
             withTableBorder
             withColumnBorders
-            style={{
-              fontFamily: 'monospace',
-              fontSize: 'var(--mantine-font-size-sm)',
-              opacity: isExecuting ? 0.6 : 1,
-              pointerEvents: isExecuting ? 'none' : 'auto',
-            }}
+            stickyHeader
+            className={`${styles.resultsTable} ${isExecuting ? styles.resultsTableExecuting : ''}`}
           >
             <Table.Thead>
               <Table.Tr>
@@ -92,7 +125,11 @@ export function ResultsCard({
               {rows.map((row, rowIndex) => (
                 <Table.Tr key={rowIndex}>
                   {columns.map((col) => (
-                    <Table.Td key={col}>
+                    <Table.Td
+                      key={col}
+                      onClick={() => handleCellClick(rowIndex, col)}
+                      className={styles.cellClickable}
+                    >
                       {formatCellValue(row[col])}
                     </Table.Td>
                   ))}
@@ -100,7 +137,7 @@ export function ResultsCard({
               ))}
             </Table.Tbody>
           </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
       )}
     </Box>
   );

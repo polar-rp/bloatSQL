@@ -1,0 +1,7 @@
+.structureTable {
+    font-size: var(--mantine-font-size-sm);
+}
+
+.tableContainer {
+    max-height: calc(100vh - 200px);
+}

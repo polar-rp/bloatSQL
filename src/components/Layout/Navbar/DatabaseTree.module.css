@@ -1,0 +1,17 @@
+.root {
+  font-size: 13px;
+}
+
+.label {
+  padding-block: 3px;
+}
+
+.label[data-hovered] {
+  background-color: var(--mantine-primary-color-light-hover);
+}
+
+.label[data-selected] {
+  font-weight: 600;
+  background-color: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-contrast);
+}

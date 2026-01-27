@@ -1,5 +1,5 @@
 import { Modal, Select, Stack, Text, Group, ColorSwatch, useMantineTheme, CheckIcon, Center, Slider } from '@mantine/core';
-import { usePrimaryColor, useColorScheme, useDefaultRadius, useSetPrimaryColor, useSetColorScheme, useSetDefaultRadius } from '../../stores/settingsStore';
+import { usePrimaryColor, useColorScheme, useDefaultRadius, useSetPrimaryColor, useSetColorScheme, useSetDefaultRadius } from '../../../stores/settingsStore';
 
 interface SettingsModalProps {
     opened: boolean;

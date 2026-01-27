@@ -190,6 +190,49 @@ pub async fn list_tables(
 }
 
 #[tauri::command]
+pub async fn list_databases(
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<Vec<String>, String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            let databases = conn.list_databases().await.map_err(|e| e.message)?;
+            Ok(databases)
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn change_database(
+    database_name: String,
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<(), String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            conn.change_database(&database_name).await.map_err(|e| e.message)?;
+            Ok(())
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_current_database(
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<String, String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            let db_name = conn.get_current_database().await.map_err(|e| e.message)?;
+            Ok(db_name)
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
 pub async fn get_table_columns(
     table_name: String,
     active_conn: tauri::State<'_, ActiveConnection>,
@@ -238,6 +281,28 @@ pub async fn export_database(
             std::fs::write(&file_path, sql_content)
                 .map_err(|e| format!("Failed to write file: {}", e))?;
 
+            Ok(())
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn update_cell(
+    table_name: String,
+    column_name: String,
+    new_value: String,
+    where_clause: String,
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<(), String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            let query = format!(
+                "UPDATE `{}` SET `{}` = {} WHERE {}",
+                table_name, column_name, new_value, where_clause
+            );
+            conn.execute_query(&query).await.map_err(|e| e.message)?;
             Ok(())
         }
         None => Err("No active connection".to_string()),

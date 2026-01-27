@@ -36,9 +36,13 @@ fn main() {
             commands::connect_to_database,
             commands::execute_query,
             commands::list_tables,
+            commands::list_databases,
+            commands::change_database,
+            commands::get_current_database,
             commands::get_table_columns,
             commands::disconnect_from_database,
             commands::export_database,
+            commands::update_cell,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

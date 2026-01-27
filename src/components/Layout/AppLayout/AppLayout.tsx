@@ -1,32 +1,25 @@
-import { ReactNode } from "react";
-import { AppShell, Box, ScrollArea, Flex } from "@mantine/core";
-import { useViewMode, useSetViewMode, useSelectedTable, useQueryEditorVisible, useToggleQueryEditor } from "../../../stores/tableViewStore";
+import { ReactNode, memo } from "react";
+import { AppShell, Box } from "@mantine/core";
+import { useNavbarCollapsed, useAsideCollapsed } from "../../../stores/layoutStore";
 import { Footer } from "../Footer";
+import styles from "./AppLayout.module.css";
 
 interface AppLayoutProps {
-    navbarCollapsed: boolean;
-    asideCollapsed: boolean;
-    footerCollapsed: boolean;
     header: ReactNode;
     navbar: ReactNode;
     aside: ReactNode;
     children: ReactNode;
 }
 
-export function AppLayout({
-    navbarCollapsed,
-    asideCollapsed,
-    footerCollapsed,
+function AppLayoutComponent({
     header,
     navbar,
     aside,
     children,
 }: AppLayoutProps) {
-    const viewMode = useViewMode();
-    const setViewMode = useSetViewMode();
-    const selectedTable = useSelectedTable();
-    const queryEditorVisible = useQueryEditorVisible();
-    const toggleQueryEditor = useToggleQueryEditor();
+    // Layout state from store - only re-renders when these specific values change
+    const navbarCollapsed = useNavbarCollapsed();
+    const asideCollapsed = useAsideCollapsed();
 
     return (
         <Box h="100%">
@@ -56,22 +49,17 @@ export function AppLayout({
                 </AppShell.Aside>
 
                 <AppShell.Main>
-                    <Flex direction="column" h="calc(100vh - var(--app-shell-header-height, 0px))">
-                        <ScrollArea flex={1} p="md">
+                    <Box className={styles.mainContainer}>
+                        <Box className={styles.mainContent}>
                             {children}
-                        </ScrollArea>
+                        </Box>
 
-                        <Footer
-                            collapsed={footerCollapsed}
-                            viewMode={viewMode}
-                            onViewModeChange={setViewMode}
-                            selectedTable={selectedTable}
-                            queryEditorVisible={queryEditorVisible}
-                            onToggleQueryEditor={toggleQueryEditor}
-                        />
-                    </Flex>
+                        <Footer />
+                    </Box>
                 </AppShell.Main>
             </AppShell>
         </Box>
     );
 }
+
+export const AppLayout = memo(AppLayoutComponent);

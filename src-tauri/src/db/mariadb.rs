@@ -245,6 +245,60 @@ impl DatabaseConnection for MariaDbConnection {
         Ok(tables)
     }
 
+    async fn list_databases(&self) -> DbResult<Vec<String>> {
+        let mut conn = self.get_conn().await?;
+
+        let result = conn.query_iter("SHOW DATABASES").await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: None,
+        })?;
+
+        let mut databases: Vec<String> = Vec::with_capacity(20);
+        let mut result = result;
+
+        while let Some(row) = result.next().await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: None,
+        })? {
+            let db_name: String = row.get(0).unwrap_or_default();
+            databases.push(db_name);
+        }
+
+        Ok(databases)
+    }
+
+    async fn change_database(&self, database_name: &str) -> DbResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        let query = format!("USE `{}`", database_name);
+        conn.query_drop(query).await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: None,
+        })?;
+
+        Ok(())
+    }
+
+    async fn get_current_database(&self) -> DbResult<String> {
+        let mut conn = self.get_conn().await?;
+
+        let result = conn.query_iter("SELECT DATABASE()").await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: None,
+        })?;
+
+        let mut result = result;
+        if let Some(row) = result.next().await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: None,
+        })? {
+            let db_name: Option<String> = row.get(0);
+            return Ok(db_name.unwrap_or_default());
+        }
+
+        Ok(String::new())
+    }
+
     async fn get_table_columns(&self, table_name: &str) -> DbResult<Vec<TableColumn>> {
         let mut conn = self.get_conn().await?;
 

@@ -1,2 +1,3 @@
 export { Navbar } from './Navbar';
-export { TablesList } from './TablesList';
+export { DatabaseTree } from './DatabaseTree';
+export { DatabaseSelector } from './DatabaseSelector';

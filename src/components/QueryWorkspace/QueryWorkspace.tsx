@@ -5,6 +5,7 @@ import { QueryEditorCard } from './QueryEditorCard';
 import { ResultsCard } from './ResultsCard';
 import { TableStructureView } from './TableStructureView';
 import { useViewMode, useQueryEditorVisible } from '../../stores/tableViewStore';
+import styles from './QueryWorkspace.module.css';
 
 interface QueryWorkspaceProps {
   query: string;
@@ -38,10 +39,10 @@ export function QueryWorkspace({
   };
 
   return (
-    <Box>
+    <Box h="100%">
       {viewMode === 'data' ? (
         queryEditorVisible ? (
-          <Stack gap="md" style={{ height: 'calc(100vh - 120px)' }}>
+          <Stack gap="md" h="100%">
             <QueryEditorCard
               query={query}
               onQueryChange={onQueryChange}
@@ -52,7 +53,7 @@ export function QueryWorkspace({
               editorHeight={editorHeight}
               onToggleHeight={toggleEditorHeight}
             />
-            <Box style={{ flex: 1, overflow: 'auto' }}>
+            <Box className={styles.resultsContainer}>
               <ResultsCard
                 results={results}
                 isExecuting={isExecuting}
@@ -62,12 +63,14 @@ export function QueryWorkspace({
             </Box>
           </Stack>
         ) : (
-          <ResultsCard
-            results={results}
-            isExecuting={isExecuting}
-            error={error}
-            onClearError={onClearError}
-          />
+          <Box h="100%">
+            <ResultsCard
+              results={results}
+              isExecuting={isExecuting}
+              error={error}
+              onClearError={onClearError}
+            />
+          </Box>
         )
       ) : (
         <TableStructureView />

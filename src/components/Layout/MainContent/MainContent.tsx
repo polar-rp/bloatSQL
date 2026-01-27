@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { QueryWorkspace } from "../../QueryWorkspace";
 
 type MainContentProps = {
@@ -13,7 +14,7 @@ type MainContentProps = {
   isTableTransitionPending: boolean;
 };
 
-export function MainContent({
+function MainContentComponent({
   queryText,
   handleQueryChange,
   handleExecute,
@@ -39,3 +40,5 @@ export function MainContent({
     />
   );
 }
+
+export const MainContent = memo(MainContentComponent);

@@ -1,17 +1,20 @@
-import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, ThemeIcon, TextInput, SegmentedControl, Code, Badge, rem } from '@mantine/core';
-import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlugOff, IconPlug, IconSearch, IconTable, IconHistory } from '@tabler/icons-react';
+import { memo, useState } from 'react';
+import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, TextInput, SegmentedControl, Code, Badge, rem } from '@mantine/core';
+import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlug, IconSearch, IconTable, IconHistory } from '@tabler/icons-react';
 import { Connection } from '../../../types/database';
-import { TablesList } from './TablesList';
-import { Led } from '@gfazioli/mantine-led';
-import { useState } from 'react';
+import { DatabaseTree } from './DatabaseTree';
+import { DatabaseSelector } from './DatabaseSelector';
 import { HistoryItem } from '../Aside';
 
 interface NavbarProps {
   connections: Connection[];
   activeConnection: Connection | null;
   tables: string[] | null;
+  databases: string[];
+  currentDatabase: string;
   connectionLoading: boolean;
   isLoadingTables: boolean;
+  isLoadingDatabases: boolean;
   selectedTable: string | null;
   queryHistory: HistoryItem[];
   onNewConnection: () => void;
@@ -20,15 +23,19 @@ interface NavbarProps {
   onEditConnection: (connection: Connection) => void;
   onDeleteConnection: (id: string) => void;
   onSelectTable: (tableName: string) => void;
+  onDatabaseChange: (database: string) => void;
   onLoadQuery: (query: string) => void;
 }
 
-export function Navbar({
+function NavbarComponent({
   connections,
   activeConnection,
   tables,
+  databases,
+  currentDatabase,
   connectionLoading,
   isLoadingTables,
+  isLoadingDatabases,
   selectedTable,
   queryHistory,
   onNewConnection,
@@ -37,6 +44,7 @@ export function Navbar({
   onEditConnection,
   onDeleteConnection,
   onSelectTable,
+  onDatabaseChange,
   onLoadQuery,
 }: NavbarProps) {
   const [tableSearch, setTableSearch] = useState('');
@@ -66,44 +74,18 @@ export function Navbar({
             New Connection
           </Button>
         ) : (
-          <Card withBorder padding="sm">
-            <Stack gap="xs">
-              <Group justify="space-between" wrap="nowrap">
-                <Group gap="xs" >
-                  <ThemeIcon size={'lg'} variant='light'>
-                    <IconDatabase />
-                  </ThemeIcon>
-
-                  <Stack gap={0}>
-                    <Group gap={5}>
-                      <Text size="sm" fw={600} truncate>
-                        {activeConnection.name}
-                      </Text>
-                      <Led animate size='xs' animationType="pulse" animationDuration={3.5} />
-                    </Group>
-
-                    <Text size="xs" c="dimmed" truncate>
-                      {activeConnection.host}
-                    </Text>
-                  </Stack>
-                </Group>
-              </Group>
-              <Button
-                size="xs"
-                variant="light"
-                color="red"
-                leftSection={<IconPlugOff size={14} />}
-                onClick={onDisconnect}
-                fullWidth
-              >
-                Disconnect
-              </Button>
-            </Stack>
-          </Card>
+          <DatabaseSelector
+            activeConnection={activeConnection}
+            databases={databases}
+            currentDatabase={currentDatabase}
+            isLoadingDatabases={isLoadingDatabases}
+            onDatabaseChange={onDatabaseChange}
+            onDisconnect={onDisconnect}
+          />
         )}
       </AppShell.Section>
 
-      {isConnected && (
+      {isConnected && currentDatabase && (
         <>
           <AppShell.Section mb="sm">
             <TextInput
@@ -153,55 +135,63 @@ export function Navbar({
         viewportProps={{ style: { overflowX: 'hidden' } }}
       >
         {isConnected ? (
-          activeTab === 'tables' ? (
-            <TablesList
-              tables={tables}
-              isLoadingTables={isLoadingTables}
-              isConnected={isConnected}
-              selectedTable={selectedTable}
-              onSelectTable={onSelectTable}
-              searchQuery={tableSearch}
-            />
+          currentDatabase ? (
+            activeTab === 'tables' ? (
+              <DatabaseTree
+                tables={tables}
+                isLoadingTables={isLoadingTables}
+                isConnected={isConnected}
+                selectedTable={selectedTable}
+                onSelectTable={onSelectTable}
+                searchQuery={tableSearch}
+              />
+            ) : (
+              <Stack gap="xs">
+                {queryHistory.length === 0 ? (
+                  <Text size="sm" c="dimmed" ta="center" py="xl">
+                    No query history yet
+                  </Text>
+                ) : (
+                  queryHistory.map((item, idx) => (
+                    <Card
+                      key={idx}
+                      p="xs"
+                      withBorder
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => onLoadQuery(item.query)}
+                    >
+                      <Stack gap={4}>
+                        <Code
+                          block
+                          style={{
+                            fontSize: rem(11),
+                            maxHeight: rem(60),
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {item.query.slice(0, 100)}
+                          {item.query.length > 100 && '...'}
+                        </Code>
+                        <Group gap="xs" justify="space-between">
+                          <Text size="xs" c="dimmed">
+                            {item.timestamp.toLocaleTimeString()}
+                          </Text>
+                          <Badge size="xs" variant="light">
+                            {item.executionTime}ms
+                          </Badge>
+                        </Group>
+                      </Stack>
+                    </Card>
+                  ))
+                )}
+              </Stack>
+            )
           ) : (
-            <Stack gap="xs">
-              {queryHistory.length === 0 ? (
-                <Text size="sm" c="dimmed" ta="center" py="xl">
-                  No query history yet
-                </Text>
-              ) : (
-                queryHistory.map((item, idx) => (
-                  <Card
-                    key={idx}
-                    p="xs"
-                    withBorder
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => onLoadQuery(item.query)}
-                  >
-                    <Stack gap={4}>
-                      <Code
-                        block
-                        style={{
-                          fontSize: rem(11),
-                          maxHeight: rem(60),
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {item.query.slice(0, 100)}
-                        {item.query.length > 100 && '...'}
-                      </Code>
-                      <Group gap="xs" justify="space-between">
-                        <Text size="xs" c="dimmed">
-                          {item.timestamp.toLocaleTimeString()}
-                        </Text>
-                        <Badge size="xs" variant="light">
-                          {item.executionTime}ms
-                        </Badge>
-                      </Group>
-                    </Stack>
-                  </Card>
-                ))
-              )}
-            </Stack>
+            <Center h={100}>
+              <Text size="sm" c="dimmed" ta="center">
+                Select a database to view tables
+              </Text>
+            </Center>
           )
         ) : (
           <Stack gap="sm">
@@ -269,4 +259,6 @@ export function Navbar({
   );
 }
 
-export { TablesList } from './TablesList';
+export const Navbar = memo(NavbarComponent);
+export { DatabaseTree } from './DatabaseTree';
+export { DatabaseSelector } from './DatabaseSelector';

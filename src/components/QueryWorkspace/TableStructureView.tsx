@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Box, Text, Stack, Table, Badge, Loader, Center, Alert, ScrollArea } from '@mantine/core';
+import { Box, Text, Stack, Table, Badge, Loader, Center, Alert } from '@mantine/core';
 import { IconAlertCircle, IconKey, IconCheck, IconX } from '@tabler/icons-react';
 import { useSelectedTable } from '../../stores/tableViewStore';
 import { tauriCommands } from '../../tauri/commands';
 import { TableColumn } from '../../types/database';
+import styles from './TableStructureView.module.css';
 
 export function TableStructureView() {
   const selectedTable = useSelectedTable();
@@ -74,15 +75,14 @@ export function TableStructureView() {
             <Text c="dimmed">No columns found</Text>
           </Center>
         ) : (
-          <ScrollArea>
+          <Table.ScrollContainer minWidth={400} className={styles.tableContainer}>
             <Table
               striped
               highlightOnHover
               withTableBorder
               withColumnBorders
-              style={{
-                fontSize: 'var(--mantine-font-size-sm)',
-              }}
+              stickyHeader
+              className={styles.structureTable}
             >
               <Table.Thead>
                 <Table.Tr>
@@ -121,7 +121,7 @@ export function TableStructureView() {
                 ))}
               </Table.Tbody>
             </Table>
-          </ScrollArea>
+          </Table.ScrollContainer>
         )}
     </Stack>
   );

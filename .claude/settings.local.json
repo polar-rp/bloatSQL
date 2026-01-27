@@ -5,7 +5,9 @@
       "Bash(npm uninstall:*)",
       "Bash(npm run type-check:*)",
       "Bash(tree:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:mantine.dev)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

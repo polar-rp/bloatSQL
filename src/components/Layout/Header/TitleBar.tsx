@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Button, Group, Image, Menu, Text, UnstyledButton, Badge, ActionIcon } from '@mantine/core';
 import {
   IconFileDownload,
@@ -22,33 +23,37 @@ import '@gfazioli/mantine-led/styles.layer.css';
 import appIcon from '../../../assets/BloatSQL1024x1024Logo.png';
 import { useDisclosure } from '@mantine/hooks';
 import { SettingsModal } from '../../modals';
+import {
+  useNavbarCollapsed,
+  useAsideCollapsed,
+  useFooterCollapsed,
+  useToggleNavbar,
+  useToggleAside,
+  useToggleFooter,
+} from '../../../stores/layoutStore';
 
 interface TitleBarProps {
   activeConnection: Connection | null;
   onExecuteQuery: () => void;
   onOpenExportModal: () => void;
-  navbarCollapsed: boolean;
-  asideCollapsed: boolean;
-  footerCollapsed: boolean;
-  onToggleNavbar: () => void;
-  onToggleAside: () => void;
-  onToggleFooter: () => void;
 }
 
-export function TitleBar({
+function TitleBarComponent({
   activeConnection,
   onExecuteQuery,
   onOpenExportModal,
-  navbarCollapsed,
-  asideCollapsed,
-  footerCollapsed,
-  onToggleNavbar,
-  onToggleAside,
-  onToggleFooter,
 }: TitleBarProps) {
   const { minimize, toggleMaximize, close } = useWindowControls();
   const { isMaximized } = useTauriContext();
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
+
+  // Layout state from store - only these components re-render on layout changes
+  const navbarCollapsed = useNavbarCollapsed();
+  const asideCollapsed = useAsideCollapsed();
+  const footerCollapsed = useFooterCollapsed();
+  const toggleNavbar = useToggleNavbar();
+  const toggleAside = useToggleAside();
+  const toggleFooter = useToggleFooter();
 
   return (
     <>
@@ -138,7 +143,7 @@ export function TitleBar({
 
         <Group gap={2} mr={4}>
           <ActionIcon
-            onClick={onToggleNavbar}
+            onClick={toggleNavbar}
             variant="subtle"
             color="gray"
             size="sm"
@@ -151,7 +156,7 @@ export function TitleBar({
             )}
           </ActionIcon>
           <ActionIcon
-            onClick={onToggleFooter}
+            onClick={toggleFooter}
             variant="subtle"
             color="gray"
             size="sm"
@@ -164,7 +169,7 @@ export function TitleBar({
             )}
           </ActionIcon>
           <ActionIcon
-            onClick={onToggleAside}
+            onClick={toggleAside}
             variant="subtle"
             color="gray"
             size="sm"
@@ -207,3 +212,6 @@ export function TitleBar({
     </>
   );
 }
+
+// Memoize to prevent re-renders when parent re-renders but props haven't changed
+export const TitleBar = memo(TitleBarComponent);

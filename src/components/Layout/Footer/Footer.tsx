@@ -1,24 +1,27 @@
+import { memo } from "react";
 import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip } from "@mantine/core";
 import { IconTable, IconList, IconCode } from "@tabler/icons-react";
 import styles from "./Footer.module.css";
+import { useFooterCollapsed } from "../../../stores/layoutStore";
+import {
+    useViewMode,
+    useSetViewMode,
+    useSelectedTable,
+    useQueryEditorVisible,
+    useToggleQueryEditor,
+} from "../../../stores/tableViewStore";
 
-interface FooterProps {
-    collapsed: boolean;
-    viewMode: 'data' | 'structure';
-    onViewModeChange: (value: 'data' | 'structure') => void;
-    selectedTable: string | null;
-    queryEditorVisible: boolean;
-    onToggleQueryEditor: () => void;
-}
+function FooterComponent() {
+    // Layout state
+    const collapsed = useFooterCollapsed();
 
-export function Footer({
-    collapsed,
-    viewMode,
-    onViewModeChange,
-    selectedTable,
-    queryEditorVisible,
-    onToggleQueryEditor,
-}: FooterProps) {
+    // View state - each selector subscribes only to what it needs
+    const viewMode = useViewMode();
+    const setViewMode = useSetViewMode();
+    const selectedTable = useSelectedTable();
+    const queryEditorVisible = useQueryEditorVisible();
+    const toggleQueryEditor = useToggleQueryEditor();
+
     return (
         <Box
             className={`${styles.footer} ${collapsed ? styles.footerHidden : styles.footerVisible}`}
@@ -26,13 +29,13 @@ export function Footer({
             <Group gap="md">
                 <SegmentedControl
                     value={viewMode}
-                    onChange={(value) => onViewModeChange(value as 'data' | 'structure')}
+                    onChange={(value) => setViewMode(value as 'data' | 'structure')}
                     disabled={!selectedTable}
                     data={[
                         {
                             value: 'data',
                             label: (
-                                <Center style={{ gap: 8 }}>
+                                <Center className={styles.segmentLabel}>
                                     <IconTable size={16} stroke={1.5} />
                                     <span>Data</span>
                                 </Center>
@@ -41,7 +44,7 @@ export function Footer({
                         {
                             value: 'structure',
                             label: (
-                                <Center style={{ gap: 8 }}>
+                                <Center className={styles.segmentLabel}>
                                     <IconList size={16} stroke={1.5} />
                                     <span>Structure</span>
                                 </Center>
@@ -54,7 +57,7 @@ export function Footer({
                         <ActionIcon
                             variant={queryEditorVisible ? "filled" : "default"}
                             size="lg"
-                            onClick={onToggleQueryEditor}
+                            onClick={toggleQueryEditor}
                         >
                             <IconCode size={18} />
                         </ActionIcon>
@@ -64,3 +67,5 @@ export function Footer({
         </Box>
     );
 }
+
+export const Footer = memo(FooterComponent);

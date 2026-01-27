@@ -115,6 +115,18 @@ export const tauriCommands = {
     return invoke<string[]>('list_tables');
   },
 
+  async listDatabases(): Promise<string[]> {
+    return invoke<string[]>('list_databases');
+  },
+
+  async changeDatabase(databaseName: string): Promise<void> {
+    await invoke('change_database', { databaseName });
+  },
+
+  async getCurrentDatabase(): Promise<string> {
+    return invoke<string>('get_current_database');
+  },
+
   async getTableColumns(tableName: string): Promise<TableColumn[]> {
     const rawColumns = await invoke<BackendTableColumn[]>('get_table_columns', { tableName });
     return rawColumns.map(toFrontendTableColumn);
@@ -126,6 +138,15 @@ export const tauriCommands = {
 
   async closeSplashscreen(): Promise<void> {
     await invoke('close_splashscreen');
+  },
+
+  async updateCell(params: {
+    tableName: string;
+    columnName: string;
+    newValue: string;
+    whereClause: string;
+  }): Promise<void> {
+    await invoke('update_cell', params);
   },
 };
 

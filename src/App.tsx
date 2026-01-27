@@ -2,7 +2,6 @@ import {
   useState,
   useEffect,
   useCallback,
-  useTransition,
   useMemo,
 } from "react";
 import { useDisclosure } from "@mantine/hooks";
@@ -26,9 +25,14 @@ import {
   useTables,
   useIsLoadingTables,
   useExecuteQuery,
-  useLoadTables,
   useSelectTable,
   useClearQueryError,
+  useDatabases,
+  useCurrentDatabase,
+  useIsLoadingDatabases,
+  useLoadDatabases,
+  useChangeDatabase,
+  useResetDatabaseState,
 } from "./stores/queryStore";
 import {
   useExportDatabase,
@@ -37,6 +41,7 @@ import {
   useClearExportError,
   useClearExportSuccess,
 } from "./stores/exportStore";
+import { useSetSelectedTable as useSetTableViewSelected } from "./stores/tableViewStore";
 import { Connection, ExportOptions } from "./types/database";
 import {
   Header,
@@ -47,9 +52,6 @@ import {
   AppLayout,
 } from "./components/Layout";
 import { ConnectionModal } from "./components/ConnectionManager";
-import {
-  useSetSelectedTable as useSetTableViewSelected,
-} from "./stores/tableViewStore";
 import { ExportModal } from "./components/modals";
 import { tauriCommands } from "./tauri/commands";
 
@@ -71,9 +73,14 @@ function App() {
   const tables = useTables();
   const isLoadingTables = useIsLoadingTables();
   const executeQuery = useExecuteQuery();
-  const loadTables = useLoadTables();
   const selectTable = useSelectTable();
   const clearError = useClearQueryError();
+  const databases = useDatabases();
+  const currentDatabase = useCurrentDatabase();
+  const isLoadingDatabases = useIsLoadingDatabases();
+  const loadDatabases = useLoadDatabases();
+  const changeDatabase = useChangeDatabase();
+  const resetDatabaseState = useResetDatabaseState();
 
   const exportDatabase = useExportDatabase();
   const exportError = useExportError();
@@ -81,9 +88,6 @@ function App() {
   const clearExportError = useClearExportError();
   const clearSuccess = useClearExportSuccess();
 
-  const [navbarCollapsed, setNavbarCollapsed] = useState(false);
-  const [asideCollapsed, setAsideCollapsed] = useState(false);
-  const [footerCollapsed, setFooterCollapsed] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   const [
@@ -102,8 +106,6 @@ function App() {
 
   const [queryHistory, setQueryHistory] = useState<HistoryItem[]>([]);
 
-  const [isTableTransitionPending, startTableTransition] = useTransition();
-
   useEffect(() => {
     tauriCommands.closeSplashscreen();
   }, []);
@@ -114,9 +116,9 @@ function App() {
 
   useEffect(() => {
     if (activeConnection) {
-      loadTables();
+      loadDatabases();
     }
-  }, [activeConnection, loadTables]);
+  }, [activeConnection, loadDatabases]);
 
   useEffect(() => {
     if (successMessage) {
@@ -166,22 +168,34 @@ function App() {
     async (connection: Connection) => {
       try {
         await connectToDatabase(connection);
-        await loadTables();
       } catch (error) {
         console.error("Failed to connect:", error);
       }
     },
-    [connectToDatabase, loadTables],
+    [connectToDatabase],
   );
 
   const handleDisconnect = useCallback(async () => {
     try {
       await disconnectFromDatabase();
+      resetDatabaseState();
       setSelectedTable(null);
     } catch (error) {
       console.error("Failed to disconnect:", error);
     }
-  }, [disconnectFromDatabase]);
+  }, [disconnectFromDatabase, resetDatabaseState]);
+
+  const handleDatabaseChange = useCallback(
+    async (database: string) => {
+      try {
+        await changeDatabase(database);
+        setSelectedTable(null);
+      } catch (error) {
+        console.error("Failed to change database:", error);
+      }
+    },
+    [changeDatabase],
+  );
 
   const handleDeleteConnection = useCallback(
     async (id: string) => {
@@ -221,10 +235,7 @@ function App() {
     (tableName: string) => {
       setSelectedTable(tableName);
       setTableViewSelected(tableName);
-
-      startTableTransition(() => {
-        selectTable(tableName);
-      });
+      selectTable(tableName);
     },
     [selectTable, setTableViewSelected],
   );
@@ -243,18 +254,6 @@ function App() {
     [setQueryText],
   );
 
-  const handleToggleNavbar = useCallback(() => {
-    setNavbarCollapsed((prev) => !prev);
-  }, []);
-
-  const handleCollapseAside = useCallback(() => {
-    setAsideCollapsed(true);
-  }, []);
-
-  const handleToggleFooter = useCallback(() => {
-    setFooterCollapsed((prev) => !prev);
-  }, []);
-
   const handleQueryChange = useCallback(
     (query: string) => {
       setQueryText(query);
@@ -267,20 +266,11 @@ function App() {
   return (
     <>
       <AppLayout
-        navbarCollapsed={navbarCollapsed}
-        asideCollapsed={asideCollapsed}
-        footerCollapsed={footerCollapsed}
         header={
           <Header
             activeConnection={activeConnection}
             onExecuteQuery={handleExecute}
             onOpenExportModal={openExportModal}
-            navbarCollapsed={navbarCollapsed}
-            asideCollapsed={asideCollapsed}
-            footerCollapsed={footerCollapsed}
-            onToggleNavbar={handleToggleNavbar}
-            onToggleAside={() => setAsideCollapsed(!asideCollapsed)}
-            onToggleFooter={handleToggleFooter}
           />
         }
         navbar={
@@ -288,8 +278,11 @@ function App() {
             connections={connections}
             activeConnection={activeConnection}
             tables={tables}
+            databases={databases}
+            currentDatabase={currentDatabase}
             connectionLoading={connectionLoading}
             isLoadingTables={isLoadingTables}
+            isLoadingDatabases={isLoadingDatabases}
             selectedTable={selectedTable}
             queryHistory={queryHistory}
             onNewConnection={openConnectionForm}
@@ -298,10 +291,11 @@ function App() {
             onEditConnection={handleEditConnection}
             onDeleteConnection={handleDeleteConnection}
             onSelectTable={handleTableSelect}
+            onDatabaseChange={handleDatabaseChange}
             onLoadQuery={loadQueryFromHistory}
           />
         }
-        aside={<Aside onCollapse={handleCollapseAside} />}
+        aside={<Aside />}
       >
         <MainContent
           queryText={queryText}
@@ -313,7 +307,7 @@ function App() {
           error={queryError}
           clearError={clearError}
           lastExecutionTime={lastExecutionTime}
-          isTableTransitionPending={isTableTransitionPending}
+          isTableTransitionPending={false}
         />
       </AppLayout>
 
