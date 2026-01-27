@@ -12,6 +12,7 @@ type MainContentProps = {
   clearError: () => void;
   lastExecutionTime: number | null;
   isTableTransitionPending: boolean;
+  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
 };
 
 function MainContentComponent({
@@ -25,6 +26,7 @@ function MainContentComponent({
   clearError,
   lastExecutionTime,
   isTableTransitionPending,
+  onOpenExportModal,
 }: MainContentProps) {
   return (
     <QueryWorkspace
@@ -37,6 +39,7 @@ function MainContentComponent({
       error={error}
       onClearError={clearError}
       lastExecutionTime={lastExecutionTime}
+      onOpenExportModal={onOpenExportModal}
     />
   );
 }

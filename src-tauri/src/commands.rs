@@ -1,4 +1,4 @@
-use crate::db::{DatabaseConnection, MariaDbConnection, TableColumn};
+use crate::db::{DatabaseConnection, TableColumn, create_connection};
 use crate::storage::{ConnectionsStore, StoredConnection};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -123,7 +123,8 @@ pub async fn delete_connection(
 pub async fn test_connection(
     conn: Connection,
 ) -> Result<(), String> {
-    let maria_conn = MariaDbConnection::new(
+    let db_conn = create_connection(
+        &conn.db_type,
         &conn.host,
         conn.port as u16,
         &conn.username,
@@ -134,7 +135,7 @@ pub async fn test_connection(
     .await
     .map_err(|e| e.message)?;
 
-    maria_conn.test_connection().await.map_err(|e| e.message)?;
+    db_conn.test_connection().await.map_err(|e| e.message)?;
     Ok(())
 }
 
@@ -143,7 +144,8 @@ pub async fn connect_to_database(
     conn: Connection,
     active_conn: tauri::State<'_, ActiveConnection>,
 ) -> Result<(), String> {
-    let maria_conn = MariaDbConnection::new(
+    let db_conn = create_connection(
+        &conn.db_type,
         &conn.host,
         conn.port as u16,
         &conn.username,
@@ -155,7 +157,7 @@ pub async fn connect_to_database(
     .map_err(|e| e.message)?;
 
     let mut active = active_conn.lock().await;
-    *active = Some(Arc::new(maria_conn));
+    *active = Some(db_conn);
 
     Ok(())
 }
@@ -307,4 +309,14 @@ pub async fn update_cell(
         }
         None => Err("No active connection".to_string()),
     }
+}
+
+#[tauri::command]
+pub async fn write_text_file(
+    path: String,
+    content: String,
+) -> Result<(), String> {
+    std::fs::write(&path, content)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    Ok(())
 }

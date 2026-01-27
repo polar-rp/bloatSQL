@@ -20,6 +20,10 @@ serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "io-util"] }
 # MySQL/MariaDB async driver
 mysql_async = "0.34"
+# PostgreSQL async driver
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-uuid-1", "with-serde_json-1"] }
+postgres-native-tls = "0.5"
+native-tls = "0.2"
 # SQLite for local storage (bundled for portability)
 rusqlite = { version = "0.31", features = ["bundled"] }
 # Date/time handling

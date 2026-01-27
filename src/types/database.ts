@@ -1,5 +1,6 @@
 export enum DatabaseType {
-  MariaDB = "MariaDB",
+  MariaDB = "mariadb",
+  PostgreSQL = "postgresql",
 }
 
 export interface Connection {

@@ -35,14 +35,13 @@ import {
   useResetDatabaseState,
 } from "./stores/queryStore";
 import {
-  useExportDatabase,
   useExportError,
   useExportSuccessMessage,
   useClearExportError,
   useClearExportSuccess,
 } from "./stores/exportStore";
 import { useSetSelectedTable as useSetTableViewSelected } from "./stores/tableViewStore";
-import { Connection, ExportOptions } from "./types/database";
+import { Connection } from "./types/database";
 import {
   Header,
   Navbar,
@@ -82,7 +81,6 @@ function App() {
   const changeDatabase = useChangeDatabase();
   const resetDatabaseState = useResetDatabaseState();
 
-  const exportDatabase = useExportDatabase();
   const exportError = useExportError();
   const successMessage = useExportSuccessMessage();
   const clearExportError = useClearExportError();
@@ -101,6 +99,7 @@ function App() {
   const [editingConnection, setEditingConnection] = useState<Connection | null>(
     null,
   );
+  const [exportRowData, setExportRowData] = useState<Record<string, unknown> | undefined>(undefined);
 
   const setTableViewSelected = useSetTableViewSelected();
 
@@ -240,12 +239,6 @@ function App() {
     [selectTable, setTableViewSelected],
   );
 
-  const handleExport = useCallback(
-    async (options: ExportOptions) => {
-      await exportDatabase(options);
-    },
-    [exportDatabase],
-  );
 
   const loadQueryFromHistory = useCallback(
     (query: string) => {
@@ -260,6 +253,19 @@ function App() {
     },
     [setQueryText],
   );
+
+  const handleOpenExportModalWithRow = useCallback(
+    (rowData?: Record<string, unknown>) => {
+      setExportRowData(rowData);
+      openExportModal();
+    },
+    [openExportModal],
+  );
+
+  const handleCloseExportModal = useCallback(() => {
+    closeExportModal();
+    setExportRowData(undefined);
+  }, [closeExportModal]);
 
   const isConnected = useMemo(() => !!activeConnection, [activeConnection]);
 
@@ -308,6 +314,7 @@ function App() {
           clearError={clearError}
           lastExecutionTime={lastExecutionTime}
           isTableTransitionPending={false}
+          onOpenExportModal={handleOpenExportModalWithRow}
         />
       </AppLayout>
 
@@ -319,12 +326,12 @@ function App() {
       />
 
       {/* Export Modal */}
-      {activeConnection && (
+      {activeConnection && currentDatabase && (
         <ExportModal
           opened={exportModalOpened}
-          onClose={closeExportModal}
-          onExport={handleExport}
-          databaseName={activeConnection.name}
+          onClose={handleCloseExportModal}
+          databaseName={currentDatabase}
+          rowData={exportRowData}
         />
       )}
     </>

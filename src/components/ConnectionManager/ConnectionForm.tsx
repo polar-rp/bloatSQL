@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Connection, DatabaseType } from '../../types/database';
 import { useConnectionStore } from '../../stores/connectionStore';
 
@@ -63,14 +63,46 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     },
   });
 
+  // Smart port defaulting when database type changes
+  useEffect(() => {
+    const defaultPorts: Record<DatabaseType, number> = {
+      [DatabaseType.MariaDB]: 3306,
+      [DatabaseType.PostgreSQL]: 5432,
+    };
+
+    const currentPort = form.values.port;
+    const expectedPort = defaultPorts[form.values.dbType];
+
+    // Only change port if it's still set to a default port from another DB type
+    const isDefaultPort = Object.values(defaultPorts).includes(currentPort);
+    if (isDefaultPort && currentPort !== expectedPort) {
+      form.setFieldValue('port', expectedPort);
+    }
+  }, [form.values.dbType]);
+
   const handleImport = () => {
     setImportError(null);
     if (!importUrl) return;
 
     try {
-      const url = new URL(importUrl.includes('://') ? importUrl : `mysql://${importUrl}`);
+      // Support multiple URL formats
+      let urlString = importUrl;
+      if (!importUrl.includes('://')) {
+        // Auto-detect protocol based on prefix
+        urlString = importUrl.toLowerCase().startsWith('postgres')
+          ? `postgresql://${importUrl}`
+          : `mysql://${importUrl}`;
+      }
+      const url = new URL(urlString);
 
       const values: Partial<FormValues> = {};
+
+      // Auto-detect database type from protocol
+      if (url.protocol === 'postgresql:') {
+        values.dbType = DatabaseType.PostgreSQL;
+      } else if (url.protocol === 'mysql:') {
+        values.dbType = DatabaseType.MariaDB;
+      }
 
       if (url.hostname) values.host = url.hostname;
       if (url.port) values.port = parseInt(url.port, 10);
@@ -154,7 +186,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
           <Text size="sm" fw={500}>Import from URL</Text>
           <Group gap="xs" align="flex-start">
             <TextInput
-              placeholder="mysql://user:password@host:port/database"
+              placeholder="mysql://user:pass@host:port/db or postgresql://..."
               style={{ flex: 1 }}
               value={importUrl}
               onChange={(e) => setImportUrl(e.currentTarget.value)}
@@ -173,8 +205,10 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
 
       <Select
         label="Database Type"
-        data={[{ value: DatabaseType.MariaDB, label: 'MariaDB' }]}
-        disabled
+        data={[
+          { value: DatabaseType.MariaDB, label: 'MariaDB / MySQL' },
+          { value: DatabaseType.PostgreSQL, label: 'PostgreSQL' },
+        ]}
         {...form.getInputProps('dbType')}
       />
 

@@ -6,8 +6,9 @@ import {
   Alert,
   Box,
   Table,
+  Menu,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
 import { QueryResult, TableColumn } from '../../types/database';
 import { useSelectCell } from '../../stores/editCellStore';
 import { useLoadedTable } from '../../stores/queryStore';
@@ -19,6 +20,7 @@ interface ResultsCardProps {
   isExecuting: boolean;
   error: string | null;
   onClearError: () => void;
+  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
 }
 
 function formatCellValue(value: unknown): string {
@@ -34,10 +36,16 @@ export function ResultsCard({
   isExecuting,
   error,
   onClearError,
+  onOpenExportModal,
 }: ResultsCardProps) {
   const selectCell = useSelectCell();
   const loadedTable = useLoadedTable();
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    rowIndex: number;
+  } | null>(null);
 
   const columns = useMemo(() => {
     return results?.columns || [];
@@ -75,6 +83,34 @@ export function ResultsCard({
       primaryKeyColumn: primaryKeyColumn?.name,
       primaryKeyValue: primaryKeyColumn ? row[primaryKeyColumn.name] : undefined,
     });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, rowIndex: number) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      rowIndex,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleExportRow = () => {
+    if (contextMenu === null || !onOpenExportModal) return;
+    const row = rows[contextMenu.rowIndex];
+
+    // Tworzenie obiektu z danymi wiersza
+    const rowData: Record<string, unknown> = {};
+    columns.forEach((col) => {
+      rowData[col] = row[col];
+    });
+
+    // Otwórz modal z danymi wiersza
+    onOpenExportModal(rowData);
+    handleCloseContextMenu();
   };
 
   return (
@@ -123,7 +159,10 @@ export function ResultsCard({
             </Table.Thead>
             <Table.Tbody>
               {rows.map((row, rowIndex) => (
-                <Table.Tr key={rowIndex}>
+                <Table.Tr
+                  key={rowIndex}
+                  onContextMenu={(e) => handleContextMenu(e, rowIndex)}
+                >
                   {columns.map((col) => (
                     <Table.Td
                       key={col}
@@ -139,6 +178,35 @@ export function ResultsCard({
           </Table>
         </Table.ScrollContainer>
       )}
+
+      <Menu
+        opened={contextMenu !== null}
+        onClose={handleCloseContextMenu}
+        position="bottom-start"
+        withinPortal
+      >
+        <Menu.Target>
+          <div
+            style={{
+              position: 'fixed',
+              left: contextMenu?.x ?? 0,
+              top: contextMenu?.y ?? 0,
+              width: 1,
+              height: 1,
+              pointerEvents: 'none',
+            }}
+          />
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconDownload size={16} />}
+            onClick={handleExportRow}
+          >
+            Eksportuj wiersz
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
     </Box>
   );
 }

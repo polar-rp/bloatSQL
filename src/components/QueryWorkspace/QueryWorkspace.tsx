@@ -17,6 +17,7 @@ interface QueryWorkspaceProps {
   error: string | null;
   onClearError: () => void;
   lastExecutionTime: number | null;
+  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
 }
 
 export function QueryWorkspace({
@@ -29,6 +30,7 @@ export function QueryWorkspace({
   error,
   onClearError,
   lastExecutionTime,
+  onOpenExportModal,
 }: QueryWorkspaceProps) {
   const [editorHeight, setEditorHeight] = useState<string>('45vh');
   const viewMode = useViewMode();
@@ -59,6 +61,7 @@ export function QueryWorkspace({
                 isExecuting={isExecuting}
                 error={error}
                 onClearError={onClearError}
+                onOpenExportModal={onOpenExportModal}
               />
             </Box>
           </Stack>
@@ -69,6 +72,7 @@ export function QueryWorkspace({
               isExecuting={isExecuting}
               error={error}
               onClearError={onClearError}
+              onOpenExportModal={onOpenExportModal}
             />
           </Box>
         )
