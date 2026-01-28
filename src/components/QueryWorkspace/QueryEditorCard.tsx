@@ -78,12 +78,11 @@ export function QueryEditorCard({
         </Group>
       </Group>
 
-      <Box style={{ flex: 1, overflow: 'hidden' }}>
+      <Box h={'100%'}>
         <MonacoSqlEditor
           value={query}
           onChange={onQueryChange}
           onExecute={onExecute}
-          height="100%"
         />
       </Box>
 

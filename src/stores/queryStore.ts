@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { tauriCommands } from '../tauri/commands';
 import { QueryResult, DatabaseType } from '../types/database';
 import { useConnectionStore } from './connectionStore';
+import { useConsoleLogStore } from './consoleLogStore';
 
 interface QueryState {
   queryText: string;
@@ -69,6 +70,10 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
     }
 
     set({ isExecuting: true, error: null });
+
+    // Log to console
+    useConsoleLogStore.getState().addLog(queryText);
+
     try {
       const results = await tauriCommands.executeQuery(queryText);
       set({
@@ -124,6 +129,21 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
 
   changeDatabase: async (databaseName: string) => {
     set({ isLoadingTables: true, error: null, tables: null });
+
+    const activeConnection = useConnectionStore.getState().activeConnection;
+    const dbType = activeConnection?.dbType;
+
+    // Format database change command based on DB type
+    let logCommand: string;
+    if (dbType === DatabaseType.PostgreSQL) {
+      logCommand = `\\c ${databaseName}`;
+    } else {
+      logCommand = `USE \`${databaseName}\`;`;
+    }
+
+    // Log to console
+    useConsoleLogStore.getState().addLog(logCommand);
+
     try {
       await tauriCommands.changeDatabase(databaseName);
       set({ currentDatabase: databaseName });
@@ -155,6 +175,9 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       error: null,
     });
 
+    // Log to console
+    useConsoleLogStore.getState().addLog(query);
+
     try {
       const results = await tauriCommands.executeQuery(query);
       set({
@@ -183,6 +206,9 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
     const query = `SELECT * FROM ${formattedTableName}`;
 
     set({ isExecuting: true, error: null });
+
+    // Log to console
+    useConsoleLogStore.getState().addLog(query);
 
     try {
       const results = await tauriCommands.executeQuery(query);

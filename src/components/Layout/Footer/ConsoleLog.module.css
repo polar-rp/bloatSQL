@@ -1,0 +1,41 @@
+.consoleContainer {
+  width: 100%;
+  border-top: 1px solid var(--mantine-color-default-border);
+  background-color: var(--mantine-color-default);
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+}
+
+.consoleHeader {
+  padding: var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.consoleContent {
+  flex: 1;
+  min-height: 0;
+}
+
+.logEntries {
+  padding: var(--mantine-spacing-md);
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+}
+
+.logEntry {
+  margin-bottom: 8px;
+}
+
+.logEntry:last-child {
+  margin-bottom: 0;
+}
+
+.timestamp {
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.action {
+  line-height: 1.4;
+  word-break: break-word;
+}

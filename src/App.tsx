@@ -33,6 +33,7 @@ import {
   useLoadDatabases,
   useChangeDatabase,
   useResetDatabaseState,
+  useRefreshTable,
 } from "./stores/queryStore";
 import {
   useExportError,
@@ -80,6 +81,7 @@ function App() {
   const loadDatabases = useLoadDatabases();
   const changeDatabase = useChangeDatabase();
   const resetDatabaseState = useResetDatabaseState();
+  const refreshTable = useRefreshTable();
 
   const exportError = useExportError();
   const successMessage = useExportSuccessMessage();
@@ -118,6 +120,25 @@ function App() {
       loadDatabases();
     }
   }, [activeConnection, loadDatabases]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'F5') {
+        event.preventDefault();
+        if (activeConnection) {
+          refreshTable();
+          notifications.show({
+            title: "Odświeżanie",
+            message: "Dane zostały odświeżone",
+            color: "blue",
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeConnection, refreshTable]);
 
   useEffect(() => {
     if (successMessage) {

@@ -12,7 +12,7 @@ export interface HistoryItem {
 
 function EmptyState() {
   return (
-    <AppShell.Section grow>
+<AppShell.Section grow>
       <Center h="100%">
         <Stack gap="xs" align="center">
           <ThemeIcon variant="light" size={50} color="gray">
@@ -20,10 +20,10 @@ function EmptyState() {
           </ThemeIcon>
           <Stack gap={4} align="center">
             <Text fw={500} size="md" c="bright">
-              Brak aktywnego pola
+              No active field
             </Text>
             <Text c="dimmed" size="sm" ta="center">
-              Kliknij na komórkę w tabeli, aby rozpocząć edycję.
+              Click on a table cell to start editing.
             </Text>
           </Stack>
         </Stack>
