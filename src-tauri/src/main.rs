@@ -9,6 +9,13 @@ use storage::ConnectionsStore;
 use tauri::Manager;
 
 fn main() {
+    // Initialize tracing for debug builds
+    #[cfg(debug_assertions)]
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_target(false)
+        .init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
@@ -19,8 +26,11 @@ fn main() {
             }
 
             let db_path = app_dir.join("connections.db");
-            let store = Arc::new(ConnectionsStore::new(db_path).expect("Failed to initialize storage"));
-            let active_connection: Arc<tokio::sync::Mutex<Option<Arc<dyn crate::db::DatabaseConnection>>>> = Arc::new(tokio::sync::Mutex::new(None));
+            let store =
+                Arc::new(ConnectionsStore::new(db_path).expect("Failed to initialize storage"));
+            let active_connection: Arc<
+                tokio::sync::Mutex<Option<Arc<dyn crate::db::DatabaseConnection>>>,
+            > = Arc::new(tokio::sync::Mutex::new(None));
 
             app.manage(store);
             app.manage(active_connection);

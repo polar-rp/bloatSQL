@@ -56,9 +56,17 @@ export function CellEditForm() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showSaved, setShowSaved] = useState(false);
 
+  // Initialize form with values from selectedCell to avoid uncontrolled -> controlled warning
+  const initialFormValues = selectedCell
+    ? Object.entries(selectedCell.rowData).reduce((acc, [key, value]) => {
+        acc[key] = formatValue(value);
+        return acc;
+      }, {} as Record<string, string>)
+    : {};
+
   const form = useForm({
     mode: 'controlled',
-    initialValues: {} as Record<string, string>,
+    initialValues: initialFormValues,
   });
 
   useEffect(() => {

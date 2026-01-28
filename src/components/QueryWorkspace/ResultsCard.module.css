@@ -12,6 +12,11 @@
     cursor: pointer;
 }
 
+.cellFocused {
+    outline: 2px dashed var(--mantine-primary-color-filled);
+    outline-offset: -2px;
+}
+
 .tableContainer {
     height: 100%;
 }

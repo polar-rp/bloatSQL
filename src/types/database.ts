@@ -71,4 +71,7 @@ export interface TableColumn {
   dataType: string;
   isNullable: boolean;
   isPrimaryKey: boolean;
+  columnDefault?: string | null;
+  characterMaximumLength?: number | null;
+  numericPrecision?: number | null;
 }

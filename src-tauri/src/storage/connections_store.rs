@@ -1,8 +1,20 @@
+use aes_gcm::{
+    aead::{Aead, KeyInit, OsRng},
+    Aes256Gcm, Nonce,
+};
+use rand::RngCore;
 use rusqlite::{params, Connection, Result as SqlResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tracing::warn;
 use uuid::Uuid;
+
+/// Length of the encryption key in bytes (256 bits for AES-256).
+const KEY_LENGTH: usize = 32;
+
+/// Length of the nonce in bytes (96 bits for AES-GCM).
+const NONCE_LENGTH: usize = 12;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoredConnection {
@@ -17,18 +29,63 @@ pub struct StoredConnection {
     pub ssl_mode: String,
 }
 
+/// Manages persistent storage of database connections using SQLite.
+///
+/// Passwords are encrypted using AES-256-GCM before storage.
 pub struct ConnectionsStore {
     db: Mutex<Connection>,
+    encryption_key: [u8; KEY_LENGTH],
 }
 
 impl ConnectionsStore {
     pub fn new(db_path: PathBuf) -> SqlResult<Self> {
-        let db = Connection::open(db_path)?;
+        let db = Connection::open(&db_path)?;
+
+        // Load or generate encryption key
+        let key_path = db_path.with_extension("key");
+        let encryption_key = Self::load_or_generate_key(&key_path);
+
         let store = ConnectionsStore {
             db: Mutex::new(db),
+            encryption_key,
         };
         store.init_tables()?;
         Ok(store)
+    }
+
+    /// Loads an existing encryption key or generates a new one.
+    fn load_or_generate_key(key_path: &PathBuf) -> [u8; KEY_LENGTH] {
+        if key_path.exists() {
+            if let Ok(key_data) = std::fs::read(key_path) {
+                if key_data.len() == KEY_LENGTH {
+                    let mut key = [0u8; KEY_LENGTH];
+                    key.copy_from_slice(&key_data);
+                    return key;
+                }
+            }
+            warn!("Invalid key file, generating new key");
+        }
+
+        // Generate new key
+        let mut key = [0u8; KEY_LENGTH];
+        OsRng.fill_bytes(&mut key);
+
+        // Save key to file (with restrictive permissions on Unix)
+        if let Err(e) = std::fs::write(key_path, &key) {
+            warn!("Failed to save encryption key: {}", e);
+        }
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = std::fs::metadata(key_path) {
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o600);
+                let _ = std::fs::set_permissions(key_path, perms);
+            }
+        }
+
+        key
     }
 
     fn init_tables(&self) -> SqlResult<()> {
@@ -48,7 +105,11 @@ impl ConnectionsStore {
             )",
             [],
         )?;
-        let _ = db.execute("ALTER TABLE connections ADD COLUMN ssl_mode TEXT NOT NULL DEFAULT 'preferred'", []);
+        // Graceful migration for older databases
+        let _ = db.execute(
+            "ALTER TABLE connections ADD COLUMN ssl_mode TEXT NOT NULL DEFAULT 'preferred'",
+            [],
+        );
         Ok(())
     }
 
@@ -124,6 +185,7 @@ impl ConnectionsStore {
         Ok(result)
     }
 
+    #[allow(dead_code)]
     pub fn get_connection(&self, id: &str) -> SqlResult<Option<StoredConnection>> {
         let db = self.db.lock().unwrap();
         let mut stmt = db.prepare(
@@ -161,18 +223,66 @@ impl ConnectionsStore {
         Ok(rows_deleted > 0)
     }
 
+    /// Encrypts a password using AES-256-GCM.
+    ///
+    /// Returns a base64-encoded string containing: nonce || ciphertext
     fn encrypt_password(&self, password: &str) -> String {
-        use base64::Engine;
-        let engine = base64::engine::general_purpose::STANDARD;
-        engine.encode(password.as_bytes())
+        use base64::{engine::general_purpose, Engine as _};
+
+        let cipher = Aes256Gcm::new_from_slice(&self.encryption_key)
+            .expect("Invalid key length");
+
+        // Generate random nonce
+        let mut nonce_bytes = [0u8; NONCE_LENGTH];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        // Encrypt
+        let ciphertext = cipher
+            .encrypt(nonce, password.as_bytes())
+            .expect("Encryption failed");
+
+        // Combine nonce and ciphertext
+        let mut combined = Vec::with_capacity(NONCE_LENGTH + ciphertext.len());
+        combined.extend_from_slice(&nonce_bytes);
+        combined.extend_from_slice(&ciphertext);
+
+        general_purpose::STANDARD.encode(&combined)
     }
 
+    /// Decrypts a password encrypted with AES-256-GCM.
+    ///
+    /// Falls back to base64 decoding for backwards compatibility with old data.
     fn decrypt_password(&self, encrypted: &str) -> String {
-        use base64::Engine;
-        let engine = base64::engine::general_purpose::STANDARD;
-        match engine.decode(encrypted) {
-            Ok(bytes) => String::from_utf8_lossy(&bytes).to_string(),
-            Err(_) => encrypted.to_string(),
+        use base64::{engine::general_purpose, Engine as _};
+
+        let combined = match general_purpose::STANDARD.decode(encrypted) {
+            Ok(data) => data,
+            Err(_) => return encrypted.to_string(),
+        };
+
+        // Check if this looks like old base64-only encoded password
+        // (too short to be nonce + ciphertext)
+        if combined.len() < NONCE_LENGTH + 16 {
+            // 16 is minimum ciphertext size with auth tag
+            // Try to interpret as plain base64 (backwards compatibility)
+            return String::from_utf8_lossy(&combined).to_string();
+        }
+
+        let cipher = match Aes256Gcm::new_from_slice(&self.encryption_key) {
+            Ok(c) => c,
+            Err(_) => return encrypted.to_string(),
+        };
+
+        let nonce = Nonce::from_slice(&combined[..NONCE_LENGTH]);
+        let ciphertext = &combined[NONCE_LENGTH..];
+
+        match cipher.decrypt(nonce, ciphertext) {
+            Ok(plaintext) => String::from_utf8_lossy(&plaintext).to_string(),
+            Err(_) => {
+                // Decryption failed, might be old format - try base64 decode
+                String::from_utf8_lossy(&combined).to_string()
+            }
         }
     }
 }

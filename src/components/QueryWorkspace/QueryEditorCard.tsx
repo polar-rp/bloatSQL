@@ -6,7 +6,7 @@ import {
   Button,
   ActionIcon,
   Kbd,
-  Textarea,
+  Box,
 } from '@mantine/core';
 import {
   IconChevronDown,
@@ -14,6 +14,7 @@ import {
   IconFileCode,
   IconPlayerPlay,
 } from '@tabler/icons-react';
+import { MonacoSqlEditor } from './MonacoSqlEditor';
 
 interface QueryEditorCardProps {
   query: string;
@@ -36,12 +37,6 @@ export function QueryEditorCard({
   editorHeight,
   onToggleHeight,
 }: QueryEditorCardProps) {
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.ctrlKey && e.key === 'Enter') {
-      onExecute();
-    }
-  };
-
   return (
     <Card
       withBorder
@@ -65,7 +60,13 @@ export function QueryEditorCard({
         </Group>
         <Group gap="xs">
           <Text size="xs" c="dimmed">
-            <Kbd size="xs">Ctrl</Kbd> + <Kbd size="xs">Enter</Kbd>
+            <Kbd size="xs">Ctrl</Kbd> + <Kbd size="xs">Enter</Kbd> to run
+          </Text>
+          <Text size="xs" c="dimmed">
+            |
+          </Text>
+          <Text size="xs" c="dimmed">
+            <Kbd size="xs">Shift</Kbd> + <Kbd size="xs">Alt</Kbd> + <Kbd size="xs">F</Kbd> to format
           </Text>
           <ActionIcon variant="subtle" size="sm" onClick={onToggleHeight}>
             {editorHeight === '45vh' || editorHeight === 250 ? (
@@ -77,24 +78,14 @@ export function QueryEditorCard({
         </Group>
       </Group>
 
-      <Textarea
-        value={query}
-        onChange={(e) => onQueryChange(e.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Enter your SQL query here..."
-        autosize={false}
-        styles={{
-          root: { flex: 1, display: 'flex', flexDirection: 'column' },
-          wrapper: { flex: 1 },
-          input: {
-            flex: 1,
-            fontFamily: 'monospace',
-            fontSize: 13,
-            resize: 'none',
-            height: '100%',
-          },
-        }}
-      />
+      <Box style={{ flex: 1, overflow: 'hidden' }}>
+        <MonacoSqlEditor
+          value={query}
+          onChange={onQueryChange}
+          onExecute={onExecute}
+          height="100%"
+        />
+      </Box>
 
       <Group justify="space-between" mt="xs">
         <Button

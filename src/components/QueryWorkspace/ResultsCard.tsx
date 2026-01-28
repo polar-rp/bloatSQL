@@ -10,7 +10,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
 import { QueryResult, TableColumn } from '../../types/database';
-import { useSelectCell } from '../../stores/editCellStore';
+import { useSelectCell, useSelectedCell } from '../../stores/editCellStore';
 import { useLoadedTable } from '../../stores/queryStore';
 import { tauriCommands } from '../../tauri/commands';
 import styles from './ResultsCard.module.css';
@@ -39,6 +39,7 @@ export function ResultsCard({
   onOpenExportModal,
 }: ResultsCardProps) {
   const selectCell = useSelectCell();
+  const selectedCell = useSelectedCell();
   const loadedTable = useLoadedTable();
   const [tableColumns, setTableColumns] = useState<TableColumn[]>([]);
   const [contextMenu, setContextMenu] = useState<{
@@ -163,15 +164,21 @@ export function ResultsCard({
                   key={rowIndex}
                   onContextMenu={(e) => handleContextMenu(e, rowIndex)}
                 >
-                  {columns.map((col) => (
-                    <Table.Td
-                      key={col}
-                      onClick={() => handleCellClick(rowIndex, col)}
-                      className={styles.cellClickable}
-                    >
-                      {formatCellValue(row[col])}
-                    </Table.Td>
-                  ))}
+                  {columns.map((col) => {
+                    const isFocused =
+                      selectedCell?.rowIndex === rowIndex &&
+                      selectedCell?.columnName === col;
+
+                    return (
+                      <Table.Td
+                        key={col}
+                        onClick={() => handleCellClick(rowIndex, col)}
+                        className={`${styles.cellClickable} ${isFocused ? styles.cellFocused : ''}`}
+                      >
+                        {formatCellValue(row[col])}
+                      </Table.Td>
+                    );
+                  })}
                 </Table.Tr>
               ))}
             </Table.Tbody>

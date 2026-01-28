@@ -1,9 +1,10 @@
-use crate::db::{DatabaseConnection, TableColumn, create_connection};
+use crate::db::{create_connection, DatabaseConnection, TableColumn};
 use crate::storage::{ConnectionsStore, StoredConnection};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{Manager, WebviewWindow};
 use tokio::sync::Mutex;
+use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Connection {
@@ -24,8 +25,8 @@ pub struct QueryResult {
     pub rows: Vec<serde_json::Value>,
     pub row_count: usize,
     pub execution_time: u128,
+    pub truncated: bool,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportOptions {
@@ -38,6 +39,15 @@ pub struct ExportOptions {
     pub max_insert_size: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCellRequest {
+    pub table_name: String,
+    pub column_name: String,
+    pub new_value: String,
+    pub primary_key_column: String,
+    pub primary_key_value: String,
+}
+
 impl From<crate::db::QueryResult> for QueryResult {
     fn from(result: crate::db::QueryResult) -> Self {
         QueryResult {
@@ -45,6 +55,7 @@ impl From<crate::db::QueryResult> for QueryResult {
             rows: result.rows,
             row_count: result.row_count,
             execution_time: result.execution_time,
+            truncated: result.truncated,
         }
     }
 }
@@ -54,10 +65,10 @@ pub type ActiveConnection = Arc<Mutex<Option<Arc<dyn DatabaseConnection>>>>;
 #[tauri::command]
 pub async fn close_splashscreen(window: WebviewWindow) {
     if let Some(splashscreen) = window.get_webview_window("splashscreen") {
-        splashscreen.close().unwrap();
+        let _ = splashscreen.close();
     }
     if let Some(main) = window.get_webview_window("main") {
-        main.show().unwrap();
+        let _ = main.show();
     }
 }
 
@@ -82,6 +93,7 @@ pub async fn save_connection(
         .save_connection(stored)
         .map_err(|e| e.to_string())?;
 
+    debug!("Saved connection: {}", conn.name);
     Ok(conn)
 }
 
@@ -114,15 +126,16 @@ pub async fn delete_connection(
     store: tauri::State<'_, Arc<ConnectionsStore>>,
     id: String,
 ) -> Result<bool, String> {
-    store
+    let result = store
         .delete_connection(&id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    debug!("Deleted connection: {}", id);
+    Ok(result)
 }
 
 #[tauri::command]
-pub async fn test_connection(
-    conn: Connection,
-) -> Result<(), String> {
+pub async fn test_connection(conn: Connection) -> Result<(), String> {
     let db_conn = create_connection(
         &conn.db_type,
         &conn.host,
@@ -136,6 +149,7 @@ pub async fn test_connection(
     .map_err(|e| e.message)?;
 
     db_conn.test_connection().await.map_err(|e| e.message)?;
+    debug!("Connection test successful: {}", conn.name);
     Ok(())
 }
 
@@ -159,6 +173,7 @@ pub async fn connect_to_database(
     let mut active = active_conn.lock().await;
     *active = Some(db_conn);
 
+    debug!("Connected to database: {}", conn.name);
     Ok(())
 }
 
@@ -213,7 +228,10 @@ pub async fn change_database(
     let active = active_conn.lock().await;
     match &*active {
         Some(conn) => {
-            conn.change_database(&database_name).await.map_err(|e| e.message)?;
+            conn.change_database(&database_name)
+                .await
+                .map_err(|e| e.message)?;
+            debug!("Changed database to: {}", database_name);
             Ok(())
         }
         None => Err("No active connection".to_string()),
@@ -242,7 +260,10 @@ pub async fn get_table_columns(
     let active = active_conn.lock().await;
     match &*active {
         Some(conn) => {
-            let columns = conn.get_table_columns(&table_name).await.map_err(|e| e.message)?;
+            let columns = conn
+                .get_table_columns(&table_name)
+                .await
+                .map_err(|e| e.message)?;
             Ok(columns)
         }
         None => Err("No active connection".to_string()),
@@ -256,6 +277,7 @@ pub async fn disconnect_from_database(
     let mut active = active_conn.lock().await;
     if let Some(conn) = active.take() {
         conn.disconnect().await.map_err(|e| e.message)?;
+        debug!("Disconnected from database");
     }
     Ok(())
 }
@@ -280,31 +302,47 @@ pub async fn export_database(
                 .map_err(|e| e.message)?;
 
             let file_path = std::path::Path::new(&options.output_path).join(&options.file_name);
-            std::fs::write(&file_path, sql_content)
+
+            // Use async file I/O
+            tokio::fs::write(&file_path, sql_content)
+                .await
                 .map_err(|e| format!("Failed to write file: {}", e))?;
 
+            debug!("Exported database to: {:?}", file_path);
             Ok(())
         }
         None => Err("No active connection".to_string()),
     }
 }
 
+/// Updates a single cell value in a table.
+///
+/// Uses parameterized queries to prevent SQL injection.
 #[tauri::command]
 pub async fn update_cell(
-    table_name: String,
-    column_name: String,
-    new_value: String,
-    where_clause: String,
+    request: UpdateCellRequest,
     active_conn: tauri::State<'_, ActiveConnection>,
 ) -> Result<(), String> {
     let active = active_conn.lock().await;
     match &*active {
         Some(conn) => {
-            let query = format!(
-                "UPDATE `{}` SET `{}` = {} WHERE {}",
-                table_name, column_name, new_value, where_clause
+            conn.update_cell(
+                &request.table_name,
+                &request.column_name,
+                &request.new_value,
+                &request.primary_key_column,
+                &request.primary_key_value,
+            )
+            .await
+            .map_err(|e| e.message)?;
+
+            debug!(
+                "Updated cell in {}.{} where {} = {}",
+                request.table_name,
+                request.column_name,
+                request.primary_key_column,
+                request.primary_key_value
             );
-            conn.execute_query(&query).await.map_err(|e| e.message)?;
             Ok(())
         }
         None => Err("No active connection".to_string()),
@@ -312,11 +350,12 @@ pub async fn update_cell(
 }
 
 #[tauri::command]
-pub async fn write_text_file(
-    path: String,
-    content: String,
-) -> Result<(), String> {
-    std::fs::write(&path, content)
+pub async fn write_text_file(path: String, content: String) -> Result<(), String> {
+    // Use async file I/O
+    tokio::fs::write(&path, content)
+        .await
         .map_err(|e| format!("Failed to write file: {}", e))?;
+
+    debug!("Wrote text file: {}", path);
     Ok(())
 }

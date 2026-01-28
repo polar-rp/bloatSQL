@@ -1,15 +1,19 @@
-use super::connection::{DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn};
+use super::connection::{
+    error_codes, DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn,
+    DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
+};
 use async_trait::async_trait;
-use base64::{engine::general_purpose, Engine as _};
 use native_tls::TlsConnector;
 use postgres_native_tls::MakeTlsConnector;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::time::timeout;
 use tokio_postgres::{types::Type, Client, NoTls, Row};
+use tracing::{debug, error, warn};
 
+/// PostgreSQL database connection implementation.
 pub struct PostgresConnection {
     client: Arc<Mutex<Client>>,
-    // Store connection parameters for reconnection (needed for change_database)
     host: String,
     port: u16,
     username: String,
@@ -27,70 +31,8 @@ impl PostgresConnection {
         database: &str,
         ssl_mode: &str,
     ) -> DbResult<Self> {
-        let config = format!(
-            "host={} port={} user={} password={} dbname={}",
-            host, port, username, password, database
-        );
-
-        let client = if ssl_mode == "required" || ssl_mode == "preferred" {
-            let connector = TlsConnector::builder()
-                .danger_accept_invalid_certs(true)
-                .build()
-                .map_err(|e| QueryError {
-                    message: format!("TLS configuration error: {}", e),
-                    code: Some("TLS_ERROR".to_string()),
-                })?;
-
-            let tls_connector = MakeTlsConnector::new(connector);
-
-            match tokio_postgres::connect(&config, tls_connector).await {
-                Ok((client, connection)) => {
-                    tokio::spawn(async move {
-                        if let Err(e) = connection.await {
-                            eprintln!("PostgreSQL TLS connection error: {}", e);
-                        }
-                    });
-                    client
-                }
-                Err(e) => {
-                    if ssl_mode == "required" {
-                        return Err(QueryError {
-                            message: format!("SSL connection failed: {}", e),
-                            code: Some("SSL_ERROR".to_string()),
-                        });
-                    }
-                    // Fall through to no-SSL connection for "preferred" mode
-                    let (client, connection) = tokio_postgres::connect(&config, NoTls)
-                        .await
-                        .map_err(|e| QueryError {
-                            message: format!("Connection failed: {}", e),
-                            code: Some("CONNECTION_ERROR".to_string()),
-                        })?;
-
-                    tokio::spawn(async move {
-                        if let Err(e) = connection.await {
-                            eprintln!("PostgreSQL connection error: {}", e);
-                        }
-                    });
-                    client
-                }
-            }
-        } else {
-            // No SSL
-            let (client, connection) = tokio_postgres::connect(&config, NoTls)
-                .await
-                .map_err(|e| QueryError {
-                    message: format!("Connection failed: {}", e),
-                    code: Some("CONNECTION_ERROR".to_string()),
-                })?;
-
-            tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    eprintln!("PostgreSQL connection error: {}", e);
-                }
-            });
-            client
-        };
+        let client =
+            Self::create_client(host, port, username, password, database, ssl_mode).await?;
 
         Ok(PostgresConnection {
             client: Arc::new(Mutex::new(client)),
@@ -103,16 +45,91 @@ impl PostgresConnection {
         })
     }
 
+    /// Creates a new PostgreSQL client with the specified parameters.
+    async fn create_client(
+        host: &str,
+        port: u16,
+        username: &str,
+        password: &str,
+        database: &str,
+        ssl_mode: &str,
+    ) -> DbResult<Client> {
+        let config = format!(
+            "host={} port={} user={} password={} dbname={}",
+            host, port, username, password, database
+        );
+
+        if ssl_mode == "required" || ssl_mode == "preferred" {
+            let connector = TlsConnector::builder()
+                .danger_accept_invalid_certs(true)
+                .build()
+                .map_err(|e| QueryError {
+                    message: format!("TLS configuration error: {}", e),
+                    code: Some(error_codes::TLS_ERROR.to_string()),
+                })?;
+
+            let tls_connector = MakeTlsConnector::new(connector);
+
+            match tokio_postgres::connect(&config, tls_connector).await {
+                Ok((client, connection)) => {
+                    tokio::spawn(async move {
+                        if let Err(e) = connection.await {
+                            error!("PostgreSQL TLS connection error: {}", e);
+                        }
+                    });
+                    debug!("PostgreSQL TLS connection established");
+                    return Ok(client);
+                }
+                Err(e) => {
+                    if ssl_mode == "required" {
+                        return Err(QueryError {
+                            message: format!("SSL connection failed: {}", e),
+                            code: Some(error_codes::SSL_ERROR.to_string()),
+                        });
+                    }
+                    warn!("SSL connection failed, falling back to non-SSL: {}", e);
+                }
+            }
+        }
+
+        // No SSL or fallback from preferred
+        let (client, connection) = tokio_postgres::connect(&config, NoTls)
+            .await
+            .map_err(|e| QueryError {
+                message: format!("Connection failed: {}", e),
+                code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            })?;
+
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                error!("PostgreSQL connection error: {}", e);
+            }
+        });
+
+        debug!("PostgreSQL non-SSL connection established");
+        Ok(client)
+    }
+
+    /// Escapes an identifier (table/column name) for safe use in SQL.
+    #[inline]
+    fn escape_identifier(name: &str) -> String {
+        name.replace('"', "\"\"")
+    }
+
+    /// Escapes a string value for safe use in SQL.
+    #[inline]
+    fn escape_string(value: &str) -> String {
+        value.replace('\'', "''")
+    }
+
     #[inline]
     fn pg_value_to_json(row: &Row, idx: usize, col_type: &Type) -> serde_json::Value {
-        use tokio_postgres::types::Type;
-
         match *col_type {
             Type::BOOL => row
                 .try_get::<_, Option<bool>>(idx)
                 .ok()
                 .flatten()
-                .map(|v| serde_json::Value::Bool(v))
+                .map(serde_json::Value::Bool)
                 .unwrap_or(serde_json::Value::Null),
 
             Type::INT2 => row
@@ -154,14 +171,17 @@ impl PostgresConnection {
                 .try_get::<_, Option<String>>(idx)
                 .ok()
                 .flatten()
-                .map(|v| serde_json::Value::String(v))
+                .map(serde_json::Value::String)
                 .unwrap_or(serde_json::Value::Null),
 
             Type::BYTEA => row
                 .try_get::<_, Option<Vec<u8>>>(idx)
                 .ok()
                 .flatten()
-                .map(|v| serde_json::Value::String(general_purpose::STANDARD.encode(&v)))
+                .map(|v| {
+                    use base64::{engine::general_purpose, Engine as _};
+                    serde_json::Value::String(general_purpose::STANDARD.encode(&v))
+                })
                 .unwrap_or(serde_json::Value::Null),
 
             Type::TIMESTAMP | Type::TIMESTAMPTZ => row
@@ -198,21 +218,17 @@ impl PostgresConnection {
                 .map(|v| serde_json::Value::String(v.to_string()))
                 .unwrap_or(serde_json::Value::Null),
 
-            _ => {
-                // Fallback: try to get as string
-                row.try_get::<_, Option<String>>(idx)
-                    .ok()
-                    .flatten()
-                    .map(|v| serde_json::Value::String(v))
-                    .unwrap_or(serde_json::Value::Null)
-            }
+            _ => row
+                .try_get::<_, Option<String>>(idx)
+                .ok()
+                .flatten()
+                .map(serde_json::Value::String)
+                .unwrap_or(serde_json::Value::Null),
         }
     }
 
     #[inline]
     fn pg_value_to_sql(row: &Row, idx: usize, col_type: &Type) -> String {
-        use tokio_postgres::types::Type;
-
         match *col_type {
             Type::BOOL => row
                 .try_get::<_, Option<bool>>(idx)
@@ -231,7 +247,7 @@ impl PostgresConnection {
                 .try_get::<_, Option<String>>(idx)
                 .ok()
                 .flatten()
-                .map(|v| format!("'{}'", v.replace('\'', "''")))
+                .map(|v| format!("'{}'", Self::escape_string(&v)))
                 .unwrap_or_else(|| "NULL".to_string()),
 
             Type::TIMESTAMP | Type::TIMESTAMPTZ => row
@@ -259,7 +275,7 @@ impl PostgresConnection {
                 .try_get::<_, Option<String>>(idx)
                 .ok()
                 .flatten()
-                .map(|v| format!("'{}'", v.replace('\'', "''")))
+                .map(|v| format!("'{}'", Self::escape_string(&v)))
                 .unwrap_or_else(|| "NULL".to_string()),
         }
     }
@@ -272,7 +288,7 @@ impl PostgresConnection {
     ) -> String {
         let column_list = columns
             .iter()
-            .map(|c| format!("\"{}\"", c))
+            .map(|c| format!("\"{}\"", Self::escape_identifier(c)))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -287,7 +303,11 @@ impl PostgresConnection {
                 " ON CONFLICT DO UPDATE SET {}",
                 columns
                     .iter()
-                    .map(|c| format!("\"{}\" = EXCLUDED.\"{}\"", c, c))
+                    .map(|c| format!(
+                        "\"{}\" = EXCLUDED.\"{}\"",
+                        Self::escape_identifier(c),
+                        Self::escape_identifier(c)
+                    ))
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -297,7 +317,10 @@ impl PostgresConnection {
 
         format!(
             "INSERT INTO \"{}\" ({}) VALUES\n  {}{};\n",
-            table_name, column_list, values_list, conflict_clause
+            Self::escape_identifier(table_name),
+            column_list,
+            values_list,
+            conflict_clause
         )
     }
 }
@@ -306,13 +329,18 @@ impl PostgresConnection {
 impl DatabaseConnection for PostgresConnection {
     async fn test_connection(&self) -> DbResult<()> {
         let client = self.client.lock().await;
-        client
-            .simple_query("SELECT 1")
+
+        timeout(DEFAULT_QUERY_TIMEOUT, client.simple_query("SELECT 1"))
             .await
+            .map_err(|_| QueryError {
+                message: "Connection test timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
-                code: Some("TEST_FAILED".to_string()),
+                code: Some(error_codes::CONNECTION_ERROR.to_string()),
             })?;
+
         Ok(())
     }
 
@@ -320,10 +348,16 @@ impl DatabaseConnection for PostgresConnection {
         let client = self.client.lock().await;
         let start = std::time::Instant::now();
 
-        let rows = client.query(query, &[]).await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: Some("QUERY_ERROR".to_string()),
-        })?;
+        let rows = timeout(DEFAULT_QUERY_TIMEOUT, client.query(query, &[]))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let columns: Vec<String> = if !rows.is_empty() {
             rows[0]
@@ -335,10 +369,13 @@ impl DatabaseConnection for PostgresConnection {
             Vec::new()
         };
 
-        let row_count = rows.len();
-        let mut result_rows = Vec::with_capacity(row_count);
+        let total_rows = rows.len();
+        let truncated = total_rows > MAX_QUERY_ROWS;
+        let rows_to_process = if truncated { MAX_QUERY_ROWS } else { total_rows };
 
-        for row in &rows {
+        let mut result_rows = Vec::with_capacity(rows_to_process);
+
+        for row in rows.iter().take(rows_to_process) {
             let mut row_map = serde_json::Map::with_capacity(columns.len());
 
             for (i, col_name) in columns.iter().enumerate() {
@@ -355,8 +392,9 @@ impl DatabaseConnection for PostgresConnection {
         Ok(QueryResult {
             columns,
             rows: result_rows,
-            row_count,
+            row_count: total_rows,
             execution_time,
+            truncated,
         })
     }
 
@@ -367,10 +405,16 @@ impl DatabaseConnection for PostgresConnection {
                      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
                      ORDER BY table_name";
 
-        let rows = client.query(query, &[]).await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: Some("QUERY_ERROR".to_string()),
-        })?;
+        let rows = timeout(DEFAULT_QUERY_TIMEOUT, client.query(query, &[]))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let tables: Vec<String> = rows
             .iter()
@@ -387,10 +431,16 @@ impl DatabaseConnection for PostgresConnection {
                      WHERE datistemplate = false
                      ORDER BY datname";
 
-        let rows = client.query(query, &[]).await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: Some("QUERY_ERROR".to_string()),
-        })?;
+        let rows = timeout(DEFAULT_QUERY_TIMEOUT, client.query(query, &[]))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let databases: Vec<String> = rows
             .iter()
@@ -402,70 +452,15 @@ impl DatabaseConnection for PostgresConnection {
 
     async fn change_database(&self, database_name: &str) -> DbResult<()> {
         // PostgreSQL doesn't have USE statement, we need to reconnect
-        let config = format!(
-            "host={} port={} user={} password={} dbname={}",
-            self.host, self.port, self.username, self.password, database_name
-        );
-
-        let new_client = if self.ssl_mode == "required" || self.ssl_mode == "preferred" {
-            let connector = TlsConnector::builder()
-                .danger_accept_invalid_certs(true)
-                .build()
-                .map_err(|e| QueryError {
-                    message: format!("TLS configuration error: {}", e),
-                    code: Some("TLS_ERROR".to_string()),
-                })?;
-
-            let tls_connector = MakeTlsConnector::new(connector);
-
-            match tokio_postgres::connect(&config, tls_connector).await {
-                Ok((client, connection)) => {
-                    tokio::spawn(async move {
-                        if let Err(e) = connection.await {
-                            eprintln!("PostgreSQL TLS connection error: {}", e);
-                        }
-                    });
-                    client
-                }
-                Err(e) => {
-                    if self.ssl_mode == "required" {
-                        return Err(QueryError {
-                            message: format!("SSL connection failed: {}", e),
-                            code: Some("SSL_ERROR".to_string()),
-                        });
-                    }
-                    // Fall through to no-SSL connection for "preferred" mode
-                    let (client, connection) = tokio_postgres::connect(&config, NoTls)
-                        .await
-                        .map_err(|e| QueryError {
-                            message: format!("Connection failed: {}", e),
-                            code: Some("CONNECTION_ERROR".to_string()),
-                        })?;
-
-                    tokio::spawn(async move {
-                        if let Err(e) = connection.await {
-                            eprintln!("PostgreSQL connection error: {}", e);
-                        }
-                    });
-                    client
-                }
-            }
-        } else {
-            // No SSL
-            let (client, connection) = tokio_postgres::connect(&config, NoTls)
-                .await
-                .map_err(|e| QueryError {
-                    message: format!("Connection failed: {}", e),
-                    code: Some("CONNECTION_ERROR".to_string()),
-                })?;
-
-            tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    eprintln!("PostgreSQL connection error: {}", e);
-                }
-            });
-            client
-        };
+        let new_client = Self::create_client(
+            &self.host,
+            self.port,
+            &self.username,
+            &self.password,
+            database_name,
+            &self.ssl_mode,
+        )
+        .await?;
 
         // Replace the client
         let mut client = self.client.lock().await;
@@ -475,6 +470,7 @@ impl DatabaseConnection for PostgresConnection {
         let mut current_db = self.current_database.lock().await;
         *current_db = database_name.to_string();
 
+        debug!("Changed database to: {}", database_name);
         Ok(())
     }
 
@@ -488,9 +484,12 @@ impl DatabaseConnection for PostgresConnection {
 
         let query = "SELECT
                         c.column_name,
-                        c.data_type,
+                        c.udt_name,
                         c.is_nullable,
-                        CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary
+                        CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary,
+                        c.column_default,
+                        c.character_maximum_length,
+                        c.numeric_precision
                      FROM information_schema.columns c
                      LEFT JOIN (
                         SELECT ku.column_name
@@ -505,12 +504,15 @@ impl DatabaseConnection for PostgresConnection {
                         AND c.table_schema = 'public'
                      ORDER BY c.ordinal_position";
 
-        let rows = client
-            .query(query, &[&table_name])
+        let rows = timeout(DEFAULT_QUERY_TIMEOUT, client.query(query, &[&table_name]))
             .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
-                code: Some("QUERY_ERROR".to_string()),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
             })?;
 
         let columns: Vec<TableColumn> = rows
@@ -521,6 +523,9 @@ impl DatabaseConnection for PostgresConnection {
                     data_type: row.try_get::<_, String>(1).ok()?,
                     is_nullable: row.try_get::<_, String>(2).ok()? == "YES",
                     is_primary_key: row.try_get::<_, bool>(3).ok()?,
+                    column_default: row.try_get::<_, String>(4).ok(),
+                    character_maximum_length: row.try_get::<_, i32>(5).ok().map(|v| v as i64),
+                    numeric_precision: row.try_get::<_, i32>(6).ok().map(|v| v as i64),
                 })
             })
             .collect();
@@ -530,6 +535,42 @@ impl DatabaseConnection for PostgresConnection {
 
     async fn disconnect(&self) -> DbResult<()> {
         // PostgreSQL client automatically disconnects when dropped
+        debug!("PostgreSQL connection disconnected");
+        Ok(())
+    }
+
+    async fn update_cell(
+        &self,
+        table_name: &str,
+        column_name: &str,
+        new_value: &str,
+        primary_key_column: &str,
+        primary_key_value: &str,
+    ) -> DbResult<()> {
+        let client = self.client.lock().await;
+
+        // Build query with escaped identifiers and parameterized values
+        let query = format!(
+            "UPDATE \"{}\" SET \"{}\" = $1 WHERE \"{}\" = $2",
+            Self::escape_identifier(table_name),
+            Self::escape_identifier(column_name),
+            Self::escape_identifier(primary_key_column)
+        );
+
+        timeout(
+            DEFAULT_QUERY_TIMEOUT,
+            client.execute(&query, &[&new_value, &primary_key_value]),
+        )
+        .await
+        .map_err(|_| QueryError {
+            message: "Update timed out".to_string(),
+            code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+        })?
+        .map_err(|e| QueryError {
+            message: e.to_string(),
+            code: Some(error_codes::QUERY_ERROR.to_string()),
+        })?;
+
         Ok(())
     }
 
@@ -551,7 +592,7 @@ impl DatabaseConnection for PostgresConnection {
 
             let rows = client.query(query, &[]).await.map_err(|e| QueryError {
                 message: e.to_string(),
-                code: Some("QUERY_ERROR".to_string()),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
             })?;
 
             rows.iter()
@@ -565,11 +606,13 @@ impl DatabaseConnection for PostgresConnection {
             sql_content.push_str(&format!("\n-- Table: {}\n", table_name));
 
             if include_drop {
-                sql_content.push_str(&format!("DROP TABLE IF EXISTS \"{}\" CASCADE;\n", table_name));
+                sql_content.push_str(&format!(
+                    "DROP TABLE IF EXISTS \"{}\" CASCADE;\n",
+                    Self::escape_identifier(&table_name)
+                ));
             }
 
             if include_create {
-                // Get table definition (simplified version)
                 let columns_query = "SELECT
                         column_name,
                         data_type,
@@ -585,10 +628,13 @@ impl DatabaseConnection for PostgresConnection {
                     .await
                     .map_err(|e| QueryError {
                         message: e.to_string(),
-                        code: Some("QUERY_ERROR".to_string()),
+                        code: Some(error_codes::QUERY_ERROR.to_string()),
                     })?;
 
-                sql_content.push_str(&format!("CREATE TABLE \"{}\" (\n", table_name));
+                sql_content.push_str(&format!(
+                    "CREATE TABLE \"{}\" (\n",
+                    Self::escape_identifier(&table_name)
+                ));
 
                 let col_defs: Vec<String> = col_rows
                     .iter()
@@ -599,7 +645,11 @@ impl DatabaseConnection for PostgresConnection {
                         let nullable = row.try_get::<_, String>(3).ok()?;
                         let default = row.try_get::<_, Option<String>>(4).ok()?;
 
-                        let mut def = format!("  \"{}\" {}", name, data_type.to_uppercase());
+                        let mut def = format!(
+                            "  \"{}\" {}",
+                            Self::escape_identifier(&name),
+                            data_type.to_uppercase()
+                        );
 
                         if let Some(len) = max_len {
                             def.push_str(&format!("({})", len));
@@ -628,16 +678,15 @@ impl DatabaseConnection for PostgresConnection {
                 loop {
                     let data_query = format!(
                         "SELECT * FROM \"{}\" LIMIT {} OFFSET {}",
-                        table_name, BATCH_SIZE, offset
+                        Self::escape_identifier(&table_name),
+                        BATCH_SIZE,
+                        offset
                     );
 
-                    let data_rows = client
-                        .query(&data_query, &[])
-                        .await
-                        .map_err(|e| QueryError {
-                            message: e.to_string(),
-                            code: Some("QUERY_ERROR".to_string()),
-                        })?;
+                    let data_rows = client.query(&data_query, &[]).await.map_err(|e| QueryError {
+                        message: e.to_string(),
+                        code: Some(error_codes::QUERY_ERROR.to_string()),
+                    })?;
 
                     if data_rows.is_empty() {
                         break;

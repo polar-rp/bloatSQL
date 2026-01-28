@@ -1,12 +1,29 @@
-use super::connection::{DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn};
+use super::connection::{
+    error_codes, DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn,
+    DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
+};
 use async_trait::async_trait;
-use mysql_async::{prelude::*, Conn, Opts, OptsBuilder, Pool, PoolConstraints, PoolOpts};
+use mysql_async::{prelude::*, Opts, OptsBuilder, Pool, PoolConstraints, PoolOpts, Value};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::time::timeout;
+use tracing::{debug, warn};
 
+/// MariaDB/MySQL database connection implementation.
 pub struct MariaDbConnection {
     pool: Pool,
-    dedicated_conn: Arc<Mutex<Option<Conn>>>,
+    current_database: Arc<Mutex<String>>,
+    // Connection parameters stored for potential future reconnection
+    #[allow(dead_code)]
+    host: String,
+    #[allow(dead_code)]
+    port: u16,
+    #[allow(dead_code)]
+    username: String,
+    #[allow(dead_code)]
+    password: String,
+    #[allow(dead_code)]
+    ssl_mode: String,
 }
 
 impl MariaDbConnection {
@@ -18,11 +35,37 @@ impl MariaDbConnection {
         dbname: &str,
         ssl_mode: &str,
     ) -> DbResult<Self> {
+        let pool = Self::create_pool(host, port, user, password, dbname, ssl_mode).await?;
+
+        // Verify connection works
+        let conn = pool.get_conn().await.map_err(|e| QueryError {
+            message: format!("Failed to connect: {}", e),
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
+        })?;
+        drop(conn);
+
+        Ok(MariaDbConnection {
+            pool,
+            current_database: Arc::new(Mutex::new(dbname.to_string())),
+            host: host.to_string(),
+            port,
+            username: user.to_string(),
+            password: password.to_string(),
+            ssl_mode: ssl_mode.to_string(),
+        })
+    }
+
+    async fn create_pool(
+        host: &str,
+        port: u16,
+        user: &str,
+        password: &str,
+        dbname: &str,
+        ssl_mode: &str,
+    ) -> DbResult<Pool> {
         let make_opts = |enable_ssl: bool| -> Opts {
-            let pool_opts = PoolOpts::default()
-                .with_constraints(
-                    PoolConstraints::new(1, 5).unwrap()
-                );
+            let pool_opts =
+                PoolOpts::default().with_constraints(PoolConstraints::new(1, 5).unwrap());
 
             let ssl_opts = if enable_ssl {
                 Some(mysql_async::SslOpts::default().with_danger_accept_invalid_certs(true))
@@ -44,93 +87,108 @@ impl MariaDbConnection {
         if ssl_mode == "required" || ssl_mode == "preferred" {
             let opts = make_opts(true);
             let pool = Pool::new(opts);
-            
+
             match pool.get_conn().await {
                 Ok(conn) => {
-                    return Ok(MariaDbConnection {
-                        pool,
-                        dedicated_conn: Arc::new(Mutex::new(Some(conn))),
-                    });
+                    drop(conn);
+                    debug!("MariaDB SSL connection established");
+                    return Ok(pool);
                 }
                 Err(e) => {
                     if ssl_mode == "required" {
                         return Err(QueryError {
-                            message: format!("SSL Connection failed: {}", e),
-                            code: None,
+                            message: format!("SSL connection failed: {}", e),
+                            code: Some(error_codes::SSL_ERROR.to_string()),
                         });
                     }
+                    warn!("SSL connection failed, falling back to non-SSL: {}", e);
                 }
             }
         }
 
         let opts = make_opts(false);
         let pool = Pool::new(opts);
-        
-        let conn = pool.get_conn().await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
+
+        pool.get_conn().await.map_err(|e| QueryError {
+            message: format!("Connection failed: {}", e),
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
         })?;
 
-        Ok(MariaDbConnection {
-            pool,
-            dedicated_conn: Arc::new(Mutex::new(Some(conn))),
-        })
+        debug!("MariaDB non-SSL connection established");
+        Ok(pool)
     }
 
-    async fn get_conn(&self) -> DbResult<Conn> {
-        self.pool.get_conn().await.map_err(|e| QueryError {
+    async fn get_conn(&self) -> DbResult<mysql_async::Conn> {
+        let current_db = self.current_database.lock().await.clone();
+
+        let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
-        })
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
+        })?;
+
+        // Ensure we're using the correct database
+        let query = format!("USE `{}`", Self::escape_identifier(&current_db));
+        conn.query_drop(&query).await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: Some(error_codes::QUERY_ERROR.to_string()),
+        })?;
+
+        Ok(conn)
+    }
+
+    /// Escapes an identifier (table/column name) for safe use in SQL.
+    #[inline]
+    fn escape_identifier(name: &str) -> String {
+        name.replace('`', "``")
+    }
+
+    /// Escapes a string value for safe use in SQL.
+    #[inline]
+    fn escape_string(value: &str) -> String {
+        value.replace('\'', "''").replace('\\', "\\\\")
     }
 
     #[inline]
-    fn mysql_value_to_json(value: mysql_async::Value) -> serde_json::Value {
+    fn mysql_value_to_json(value: Value) -> serde_json::Value {
         match value {
-            mysql_async::Value::NULL => serde_json::Value::Null,
-            mysql_async::Value::Bytes(b) => {
+            Value::NULL => serde_json::Value::Null,
+            Value::Bytes(b) => {
                 serde_json::Value::String(String::from_utf8_lossy(&b).into_owned())
             }
-            mysql_async::Value::Int(i) => serde_json::Value::Number(i.into()),
-            mysql_async::Value::UInt(u) => serde_json::Value::Number(u.into()),
-            mysql_async::Value::Float(f) => {
-                serde_json::Number::from_f64(f as f64)
-                    .map(serde_json::Value::Number)
-                    .unwrap_or(serde_json::Value::Null)
-            }
-            mysql_async::Value::Double(d) => {
-                serde_json::Number::from_f64(d)
-                    .map(serde_json::Value::Number)
-                    .unwrap_or(serde_json::Value::Null)
-            }
-            mysql_async::Value::Date(y, m, d, h, min, s, _) => {
-                serde_json::Value::String(format!(
-                    "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-                    y, m, d, h, min, s
-                ))
-            }
-            mysql_async::Value::Time(_, h, m, s, _, _) => {
+            Value::Int(i) => serde_json::Value::Number(i.into()),
+            Value::UInt(u) => serde_json::Value::Number(u.into()),
+            Value::Float(f) => serde_json::Number::from_f64(f as f64)
+                .map(serde_json::Value::Number)
+                .unwrap_or(serde_json::Value::Null),
+            Value::Double(d) => serde_json::Number::from_f64(d)
+                .map(serde_json::Value::Number)
+                .unwrap_or(serde_json::Value::Null),
+            Value::Date(y, m, d, h, min, s, _) => serde_json::Value::String(format!(
+                "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+                y, m, d, h, min, s
+            )),
+            Value::Time(_, h, m, s, _, _) => {
                 serde_json::Value::String(format!("{:02}:{:02}:{:02}", h, m, s))
             }
         }
     }
 
     #[inline]
-    fn mysql_value_to_sql(value: mysql_async::Value) -> String {
+    fn mysql_value_to_sql(value: Value) -> String {
         match value {
-            mysql_async::Value::NULL => "NULL".to_string(),
-            mysql_async::Value::Bytes(b) => {
+            Value::NULL => "NULL".to_string(),
+            Value::Bytes(b) => {
                 let s = String::from_utf8_lossy(&b);
-                format!("'{}'", s.replace('\'', "''"))
+                format!("'{}'", Self::escape_string(&s))
             }
-            mysql_async::Value::Int(i) => i.to_string(),
-            mysql_async::Value::UInt(u) => u.to_string(),
-            mysql_async::Value::Float(f) => f.to_string(),
-            mysql_async::Value::Double(d) => d.to_string(),
-            mysql_async::Value::Date(y, m, d, h, min, s, _) => {
+            Value::Int(i) => i.to_string(),
+            Value::UInt(u) => u.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::Double(d) => d.to_string(),
+            Value::Date(y, m, d, h, min, s, _) => {
                 format!("'{:04}-{:02}-{:02} {:02}:{:02}:{:02}'", y, m, d, h, min, s)
             }
-            mysql_async::Value::Time(_, h, m, s, _, _) => {
+            Value::Time(_, h, m, s, _, _) => {
                 format!("'{:02}:{:02}:{:02}'", h, m, s)
             }
         }
@@ -150,7 +208,7 @@ impl MariaDbConnection {
 
         let column_list = columns
             .iter()
-            .map(|c| format!("`{}`", c))
+            .map(|c| format!("`{}`", Self::escape_identifier(c)))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -162,7 +220,10 @@ impl MariaDbConnection {
 
         format!(
             "{} INTO `{}` ({}) VALUES\n  {};\n",
-            statement_type, table_name, column_list, values_list
+            statement_type,
+            Self::escape_identifier(table_name),
+            column_list,
+            values_list
         )
     }
 }
@@ -171,10 +232,18 @@ impl MariaDbConnection {
 impl DatabaseConnection for MariaDbConnection {
     async fn test_connection(&self) -> DbResult<()> {
         let mut conn = self.get_conn().await?;
-        conn.ping().await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
-        })?;
+
+        timeout(DEFAULT_QUERY_TIMEOUT, conn.ping())
+            .await
+            .map_err(|_| QueryError {
+                message: "Connection test timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            })?;
+
         Ok(())
     }
 
@@ -182,10 +251,16 @@ impl DatabaseConnection for MariaDbConnection {
         let mut conn = self.get_conn().await?;
         let start = std::time::Instant::now();
 
-        let result = conn.query_iter(query).await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
-        })?;
+        let result = timeout(DEFAULT_QUERY_TIMEOUT, conn.query_iter(query))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let columns: Vec<String> = result
             .columns()
@@ -194,19 +269,25 @@ impl DatabaseConnection for MariaDbConnection {
 
         let mut result_rows: Vec<serde_json::Value> = Vec::with_capacity(1000);
         let mut row_count = 0;
+        let mut truncated = false;
         let column_count = columns.len();
 
         let mut result = result;
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })? {
             row_count += 1;
+
+            if row_count > MAX_QUERY_ROWS {
+                truncated = true;
+                continue; // Count remaining rows but don't store them
+            }
 
             let mut row_map = serde_json::Map::with_capacity(column_count);
 
             for (i, col) in columns.iter().enumerate() {
-                let value: mysql_async::Value = row.get(i).unwrap_or(mysql_async::Value::NULL);
+                let value: Value = row.get(i).unwrap_or(Value::NULL);
                 row_map.insert(col.clone(), Self::mysql_value_to_json(value));
             }
 
@@ -220,23 +301,30 @@ impl DatabaseConnection for MariaDbConnection {
             rows: result_rows,
             row_count,
             execution_time,
+            truncated,
         })
     }
 
     async fn list_tables(&self) -> DbResult<Vec<String>> {
         let mut conn = self.get_conn().await?;
 
-        let result = conn.query_iter("SHOW TABLES").await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
-        })?;
+        let result = timeout(DEFAULT_QUERY_TIMEOUT, conn.query_iter("SHOW TABLES"))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let mut tables: Vec<String> = Vec::with_capacity(100);
         let mut result = result;
 
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })? {
             let table_name: String = row.get(0).unwrap_or_default();
             tables.push(table_name);
@@ -246,19 +334,28 @@ impl DatabaseConnection for MariaDbConnection {
     }
 
     async fn list_databases(&self) -> DbResult<Vec<String>> {
-        let mut conn = self.get_conn().await?;
-
-        let result = conn.query_iter("SHOW DATABASES").await.map_err(|e| QueryError {
+        let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
         })?;
+
+        let result = timeout(DEFAULT_QUERY_TIMEOUT, conn.query_iter("SHOW DATABASES"))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
 
         let mut databases: Vec<String> = Vec::with_capacity(20);
         let mut result = result;
 
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })? {
             let db_name: String = row.get(0).unwrap_or_default();
             databases.push(db_name);
@@ -268,44 +365,69 @@ impl DatabaseConnection for MariaDbConnection {
     }
 
     async fn change_database(&self, database_name: &str) -> DbResult<()> {
-        let mut conn = self.get_conn().await?;
-
-        let query = format!("USE `{}`", database_name);
-        conn.query_drop(query).await.map_err(|e| QueryError {
+        // Verify the database exists by trying to use it
+        let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
         })?;
 
+        let query = format!("USE `{}`", Self::escape_identifier(database_name));
+        conn.query_drop(&query).await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: Some(error_codes::QUERY_ERROR.to_string()),
+        })?;
+
+        // Update the stored database name for future connections
+        let mut current_db = self.current_database.lock().await;
+        *current_db = database_name.to_string();
+
+        debug!("Changed database to: {}", database_name);
         Ok(())
     }
 
     async fn get_current_database(&self) -> DbResult<String> {
-        let mut conn = self.get_conn().await?;
-
-        let result = conn.query_iter("SELECT DATABASE()").await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
-        })?;
-
-        let mut result = result;
-        if let Some(row) = result.next().await.map_err(|e| QueryError {
-            message: e.to_string(),
-            code: None,
-        })? {
-            let db_name: Option<String> = row.get(0);
-            return Ok(db_name.unwrap_or_default());
-        }
-
-        Ok(String::new())
+        let current_db = self.current_database.lock().await;
+        Ok(current_db.clone())
     }
 
     async fn get_table_columns(&self, table_name: &str) -> DbResult<Vec<TableColumn>> {
         let mut conn = self.get_conn().await?;
 
-        let query = format!("SHOW COLUMNS FROM `{}`", table_name);
-        let result = conn.query_iter(query.as_str()).await.map_err(|e| QueryError {
+        // Get current database name
+        let db_name: String = conn
+            .query_first("SELECT DATABASE()")
+            .await
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?
+            .unwrap_or_default();
+
+        let query = "SELECT
+                        c.COLUMN_NAME,
+                        c.COLUMN_TYPE,
+                        c.IS_NULLABLE,
+                        c.COLUMN_KEY,
+                        c.COLUMN_DEFAULT,
+                        c.CHARACTER_MAXIMUM_LENGTH,
+                        c.NUMERIC_PRECISION
+                     FROM information_schema.COLUMNS c
+                     WHERE c.TABLE_SCHEMA = ?
+                        AND c.TABLE_NAME = ?
+                     ORDER BY c.ORDINAL_POSITION";
+
+        let result = timeout(
+            DEFAULT_QUERY_TIMEOUT,
+            conn.exec_iter(query, (&db_name, table_name)),
+        )
+        .await
+        .map_err(|_| QueryError {
+            message: "Query timed out".to_string(),
+            code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+        })?
+        .map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })?;
 
         let mut columns: Vec<TableColumn> = Vec::with_capacity(50);
@@ -313,18 +435,51 @@ impl DatabaseConnection for MariaDbConnection {
 
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })? {
-            let name: String = row.get(0).unwrap_or_default();
-            let data_type: String = row.get(1).unwrap_or_default();
-            let nullable: String = row.get(2).unwrap_or_default();
-            let key: String = row.get(3).unwrap_or_default();
+            let name: Value = row.get(0).unwrap_or(Value::NULL);
+            let column_type: Value = row.get(1).unwrap_or(Value::NULL);
+            let nullable: Value = row.get(2).unwrap_or(Value::NULL);
+            let key: Value = row.get(3).unwrap_or(Value::NULL);
+            let column_default: Value = row.get(4).unwrap_or(Value::NULL);
+            let character_maximum_length: Value = row.get(5).unwrap_or(Value::NULL);
+            let numeric_precision: Value = row.get(6).unwrap_or(Value::NULL);
+
+            // Helper to convert Value to String
+            let value_to_string = |v: Value| -> String {
+                match v {
+                    Value::Bytes(b) => String::from_utf8_lossy(&b).into_owned(),
+                    _ => String::new(),
+                }
+            };
+
+            // Helper to convert Value to Option<String>
+            let value_to_option_string = |v: Value| -> Option<String> {
+                match v {
+                    Value::NULL => None,
+                    Value::Bytes(b) => Some(String::from_utf8_lossy(&b).into_owned()),
+                    _ => None,
+                }
+            };
+
+            // Helper to convert Value to Option<i64>
+            let value_to_option_i64 = |v: Value| -> Option<i64> {
+                match v {
+                    Value::NULL => None,
+                    Value::Int(i) => Some(i),
+                    Value::UInt(u) => Some(u as i64),
+                    _ => None,
+                }
+            };
 
             columns.push(TableColumn {
-                name,
-                data_type,
-                is_nullable: nullable == "YES",
-                is_primary_key: key == "PRI",
+                name: value_to_string(name),
+                data_type: value_to_string(column_type),
+                is_nullable: value_to_string(nullable) == "YES",
+                is_primary_key: value_to_string(key) == "PRI",
+                column_default: value_to_option_string(column_default),
+                character_maximum_length: value_to_option_i64(character_maximum_length),
+                numeric_precision: value_to_option_i64(numeric_precision),
             });
         }
 
@@ -332,12 +487,45 @@ impl DatabaseConnection for MariaDbConnection {
     }
 
     async fn disconnect(&self) -> DbResult<()> {
-        let mut dedicated = self.dedicated_conn.lock().await;
-        *dedicated = None;
-
         self.pool.clone().disconnect().await.map_err(|e| QueryError {
             message: e.to_string(),
-            code: None,
+            code: Some(error_codes::CONNECTION_ERROR.to_string()),
+        })?;
+
+        debug!("MariaDB connection disconnected");
+        Ok(())
+    }
+
+    async fn update_cell(
+        &self,
+        table_name: &str,
+        column_name: &str,
+        new_value: &str,
+        primary_key_column: &str,
+        primary_key_value: &str,
+    ) -> DbResult<()> {
+        let mut conn = self.get_conn().await?;
+
+        // Build query with escaped identifiers and parameterized value
+        let query = format!(
+            "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
+            Self::escape_identifier(table_name),
+            Self::escape_identifier(column_name),
+            Self::escape_identifier(primary_key_column)
+        );
+
+        timeout(
+            DEFAULT_QUERY_TIMEOUT,
+            conn.exec_drop(&query, (new_value, primary_key_value)),
+        )
+        .await
+        .map_err(|_| QueryError {
+            message: "Update timed out".to_string(),
+            code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+        })?
+        .map_err(|e| QueryError {
+            message: e.to_string(),
+            code: Some(error_codes::QUERY_ERROR.to_string()),
         })?;
 
         Ok(())
@@ -358,14 +546,14 @@ impl DatabaseConnection for MariaDbConnection {
         let tables_to_export = if selected_tables.is_empty() {
             let result = conn.query_iter("SHOW TABLES").await.map_err(|e| QueryError {
                 message: e.to_string(),
-                code: None,
+                code: Some(error_codes::QUERY_ERROR.to_string()),
             })?;
 
             let mut tables: Vec<String> = Vec::new();
             let mut result = result;
             while let Some(row) = result.next().await.map_err(|e| QueryError {
                 message: e.to_string(),
-                code: None,
+                code: Some(error_codes::QUERY_ERROR.to_string()),
             })? {
                 let table_name: String = row.get(0).unwrap_or_default();
                 tables.push(table_name);
@@ -379,20 +567,29 @@ impl DatabaseConnection for MariaDbConnection {
             sql_content.push_str(&format!("\n-- Table: {}\n", table_name));
 
             if include_drop {
-                sql_content.push_str(&format!("DROP TABLE IF EXISTS `{}`;\n", table_name));
+                sql_content.push_str(&format!(
+                    "DROP TABLE IF EXISTS `{}`;\n",
+                    Self::escape_identifier(&table_name)
+                ));
             }
 
             if include_create {
-                let create_query = format!("SHOW CREATE TABLE `{}`", table_name);
-                let create_result = conn.query_iter(create_query.as_str()).await.map_err(|e| QueryError {
-                    message: e.to_string(),
-                    code: None,
-                })?;
+                let create_query = format!(
+                    "SHOW CREATE TABLE `{}`",
+                    Self::escape_identifier(&table_name)
+                );
+                let create_result =
+                    conn.query_iter(create_query.as_str())
+                        .await
+                        .map_err(|e| QueryError {
+                            message: e.to_string(),
+                            code: Some(error_codes::QUERY_ERROR.to_string()),
+                        })?;
 
                 let mut create_result = create_result;
                 if let Some(row) = create_result.next().await.map_err(|e| QueryError {
                     message: e.to_string(),
-                    code: None,
+                    code: Some(error_codes::QUERY_ERROR.to_string()),
                 })? {
                     let create_statement: String = row.get(1).unwrap_or_default();
                     sql_content.push_str(&create_statement);
@@ -407,13 +604,18 @@ impl DatabaseConnection for MariaDbConnection {
                 loop {
                     let data_query = format!(
                         "SELECT * FROM `{}` LIMIT {} OFFSET {}",
-                        table_name, BATCH_SIZE, offset
+                        Self::escape_identifier(&table_name),
+                        BATCH_SIZE,
+                        offset
                     );
 
-                    let data_result = conn.query_iter(data_query.as_str()).await.map_err(|e| QueryError {
-                        message: e.to_string(),
-                        code: None,
-                    })?;
+                    let data_result =
+                        conn.query_iter(data_query.as_str())
+                            .await
+                            .map_err(|e| QueryError {
+                                message: e.to_string(),
+                                code: Some(error_codes::QUERY_ERROR.to_string()),
+                            })?;
 
                     let columns: Vec<String> = data_result
                         .columns()
@@ -426,13 +628,13 @@ impl DatabaseConnection for MariaDbConnection {
 
                     while let Some(row) = data_result.next().await.map_err(|e| QueryError {
                         message: e.to_string(),
-                        code: None,
+                        code: Some(error_codes::QUERY_ERROR.to_string()),
                     })? {
                         rows_in_batch += 1;
                         let mut values: Vec<String> = Vec::with_capacity(columns.len());
 
                         for i in 0..columns.len() {
-                            let value: mysql_async::Value = row.get(i).unwrap_or(mysql_async::Value::NULL);
+                            let value: Value = row.get(i).unwrap_or(Value::NULL);
                             values.push(Self::mysql_value_to_sql(value));
                         }
 
