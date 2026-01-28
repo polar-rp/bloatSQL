@@ -28,6 +28,9 @@ interface BackendTableColumn {
   data_type: string;
   is_nullable: boolean;
   is_primary_key: boolean;
+  column_default?: string | null;
+  character_maximum_length?: number | null;
+  numeric_precision?: number | null;
 }
 
 function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
@@ -36,6 +39,9 @@ function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
     dataType: col.data_type,
     isNullable: col.is_nullable,
     isPrimaryKey: col.is_primary_key,
+    columnDefault: col.column_default,
+    characterMaximumLength: col.character_maximum_length,
+    numericPrecision: col.numeric_precision,
   };
 }
 
@@ -138,6 +144,10 @@ export const tauriCommands = {
 
   async closeSplashscreen(): Promise<void> {
     await invoke('close_splashscreen');
+  },
+
+  async pingConnection(): Promise<number> {
+    return invoke<number>('ping_connection');
   },
 
   async updateCell(params: {

@@ -14,6 +14,8 @@ import {
   useConnectToDatabase,
   useDisconnectFromDatabase,
   useDeleteConnection,
+  usePingMs,
+  useMeasurePing,
 } from "./stores/connectionStore";
 import {
   useQueryText,
@@ -63,6 +65,9 @@ function App() {
   const connectToDatabase = useConnectToDatabase();
   const disconnectFromDatabase = useDisconnectFromDatabase();
   const deleteConnection = useDeleteConnection();
+
+  const pingMs = usePingMs();
+  const measurePing = useMeasurePing();
 
   const queryText = useQueryText();
   const setQueryText = useSetQueryText();
@@ -162,8 +167,6 @@ function App() {
     }
   }, [exportError, clearExportError]);
 
-  // queryText is managed by queryStore
-
   const handleExecute = useCallback(async () => {
     if (!activeConnection) return;
 
@@ -204,6 +207,11 @@ function App() {
       console.error("Failed to disconnect:", error);
     }
   }, [disconnectFromDatabase, resetDatabaseState]);
+
+  const handleRefreshConnection = useCallback(async () => {
+    if (!activeConnection) return;
+    await Promise.all([loadDatabases(), measurePing()]);
+  }, [activeConnection, loadDatabases, measurePing]);
 
   const handleDatabaseChange = useCallback(
     async (database: string) => {
@@ -312,6 +320,7 @@ function App() {
             isLoadingDatabases={isLoadingDatabases}
             selectedTable={selectedTable}
             queryHistory={queryHistory}
+            pingMs={pingMs}
             onNewConnection={openConnectionForm}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
@@ -320,6 +329,7 @@ function App() {
             onSelectTable={handleTableSelect}
             onDatabaseChange={handleDatabaseChange}
             onLoadQuery={loadQueryFromHistory}
+            onRefresh={handleRefreshConnection}
           />
         }
         aside={<Aside />}

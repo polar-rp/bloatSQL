@@ -350,6 +350,23 @@ pub async fn update_cell(
 }
 
 #[tauri::command]
+pub async fn ping_connection(
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<u64, String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            let start = std::time::Instant::now();
+            conn.test_connection().await.map_err(|e| e.message)?;
+            let elapsed = start.elapsed().as_millis() as u64;
+            debug!("Connection ping: {} ms", elapsed);
+            Ok(elapsed)
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
 pub async fn write_text_file(path: String, content: String) -> Result<(), String> {
     // Use async file I/O
     tokio::fs::write(&path, content)

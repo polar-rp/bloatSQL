@@ -63,7 +63,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     },
   });
 
-  // Smart port defaulting when database type changes
   useEffect(() => {
     const defaultPorts: Record<DatabaseType, number> = {
       [DatabaseType.MariaDB]: 3306,
@@ -73,7 +72,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     const currentPort = form.values.port;
     const expectedPort = defaultPorts[form.values.dbType];
 
-    // Only change port if it's still set to a default port from another DB type
     const isDefaultPort = Object.values(defaultPorts).includes(currentPort);
     if (isDefaultPort && currentPort !== expectedPort) {
       form.setFieldValue('port', expectedPort);
@@ -85,10 +83,8 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     if (!importUrl) return;
 
     try {
-      // Support multiple URL formats
       let urlString = importUrl;
       if (!importUrl.includes('://')) {
-        // Auto-detect protocol based on prefix
         urlString = importUrl.toLowerCase().startsWith('postgres')
           ? `postgresql://${importUrl}`
           : `mysql://${importUrl}`;
@@ -97,7 +93,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
 
       const values: Partial<FormValues> = {};
 
-      // Auto-detect database type from protocol
       if (url.protocol === 'postgresql:') {
         values.dbType = DatabaseType.PostgreSQL;
       } else if (url.protocol === 'mysql:') {

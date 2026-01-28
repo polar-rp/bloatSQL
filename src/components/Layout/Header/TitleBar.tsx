@@ -47,7 +47,6 @@ function TitleBarComponent({
   const { isMaximized } = useTauriContext();
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
 
-  // Layout state from store - only these components re-render on layout changes
   const navbarCollapsed = useNavbarCollapsed();
   const asideCollapsed = useAsideCollapsed();
   const footerCollapsed = useFooterCollapsed();
@@ -213,5 +212,4 @@ function TitleBarComponent({
   );
 }
 
-// Memoize to prevent re-renders when parent re-renders but props haven't changed
 export const TitleBar = memo(TitleBarComponent);

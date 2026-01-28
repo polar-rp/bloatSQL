@@ -46,7 +46,7 @@ function ConsoleLogComponent() {
       </ScrollArea>
 
       {logs.length > 0 && (
-        <Box pos={'absolute'} top={15} right={15} style={{  zIndex: 10 }}>
+        <Box pos={'absolute'} top={18} right={18} style={{  zIndex: 10 }}>
           <Tooltip label="Clear logs">
             <ActionIcon
               variant="light"

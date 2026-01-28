@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack } from "@mantine/core";
-import { IconTable, IconList, IconCode, IconPlus } from "@tabler/icons-react";
+import { IconTable, IconList, IconSql, IconPlus } from "@tabler/icons-react";
 import styles from "./Footer.module.css";
-import { useFooterCollapsed } from "../../../stores/layoutStore";
+import { useFooterCollapsed, useLayoutStore } from "../../../stores/layoutStore";
 import {
   useViewMode,
   useSetViewMode,
@@ -11,6 +11,8 @@ import {
   useToggleQueryEditor,
 } from "../../../stores/tableViewStore";
 import { ConsoleLog } from "./ConsoleLog";
+import { tauriCommands } from "../../../tauri/commands";
+import { useEditCellStore } from "../../../stores/editCellStore";
 
 function FooterComponent() {
   const collapsed = useFooterCollapsed();
@@ -58,19 +60,29 @@ function FooterComponent() {
               variant="default"
               leftSection={<IconPlus size={16} />}
               disabled={!selectedTable || viewMode !== 'data'}
+              onClick={async () => {
+                if (!selectedTable) return;
+                try {
+                  const columns = await tauriCommands.getTableColumns(selectedTable);
+                  useEditCellStore.getState().startAddRow(selectedTable, columns);
+                  useLayoutStore.getState().setAsideCollapsed(false);
+                } catch {
+                  // Column fetch failed - button stays enabled for retry
+                }
+              }}
             >
               Add row
             </Button>
           </Group>
 
-          <Tooltip label={queryEditorVisible ? "Hide Query Editor" : "Show Query Editor"}>
+          <Tooltip withArrow label={queryEditorVisible ? "Hide Query Editor" : "Show Query Editor"}>
             <ActionIcon
               variant={queryEditorVisible ? "filled" : "default"}
               size="lg"
               onClick={toggleQueryEditor}
               disabled={!selectedTable}
             >
-              <IconCode size={18} />
+              <IconSql stroke={1.5} />
             </ActionIcon>
           </Tooltip>
         </Group>

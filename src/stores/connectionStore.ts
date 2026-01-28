@@ -7,6 +7,7 @@ interface ConnectionState {
   activeConnection: Connection | null;
   isLoading: boolean;
   error: string | null;
+  pingMs: number | null;
 }
 
 interface ConnectionActions {
@@ -18,6 +19,7 @@ interface ConnectionActions {
   disconnectFromDatabase: () => Promise<void>;
   setActiveConnection: (connection: Connection | null) => void;
   clearError: () => void;
+  measurePing: () => Promise<void>;
 }
 
 type ConnectionStore = ConnectionState & ConnectionActions;
@@ -27,6 +29,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   activeConnection: null,
   isLoading: false,
   error: null,
+  pingMs: null,
 
   loadConnections: async () => {
     set({ isLoading: true, error: null });
@@ -96,6 +99,13 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     try {
       await tauriCommands.connectToDatabase(connection);
       set({ activeConnection: connection, isLoading: false });
+      // Measure ping after connecting
+      try {
+        const ping = await tauriCommands.pingConnection();
+        set({ pingMs: ping });
+      } catch {
+        // Non-critical, don't fail the connection
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to connect';
       set({ error: errorMsg, isLoading: false });
@@ -107,7 +117,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       await tauriCommands.disconnectFromDatabase();
-      set({ activeConnection: null, isLoading: false });
+      set({ activeConnection: null, isLoading: false, pingMs: null });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to disconnect';
       set({ error: errorMsg, isLoading: false });
@@ -121,6 +131,15 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 
   clearError: () => {
     set({ error: null });
+  },
+
+  measurePing: async () => {
+    try {
+      const ping = await tauriCommands.pingConnection();
+      set({ pingMs: ping });
+    } catch {
+      set({ pingMs: null });
+    }
   },
 }));
 
@@ -136,3 +155,5 @@ export const useConnectToDatabase = () => useConnectionStore((s) => s.connectToD
 export const useDisconnectFromDatabase = () => useConnectionStore((s) => s.disconnectFromDatabase);
 export const useSetActiveConnection = () => useConnectionStore((s) => s.setActiveConnection);
 export const useClearConnectionError = () => useConnectionStore((s) => s.clearError);
+export const usePingMs = () => useConnectionStore((s) => s.pingMs);
+export const useMeasurePing = () => useConnectionStore((s) => s.measurePing);

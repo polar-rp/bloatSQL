@@ -8,10 +8,11 @@ import {
   Table,
   Menu,
 } from '@mantine/core';
-import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
-import { QueryResult, TableColumn } from '../../types/database';
+import { IconAlertCircle, IconDownload, IconTrash } from '@tabler/icons-react';
+import { QueryResult, TableColumn, DatabaseType } from '../../types/database';
 import { useSelectCell, useSelectedCell } from '../../stores/editCellStore';
-import { useLoadedTable } from '../../stores/queryStore';
+import { useLoadedTable, useQueryStore } from '../../stores/queryStore';
+import { useConnectionStore } from '../../stores/connectionStore';
 import { tauriCommands } from '../../tauri/commands';
 import styles from './ResultsCard.module.css';
 
@@ -146,7 +147,6 @@ export function ResultsCard({
           <Table
             striped
             highlightOnHover
-            withTableBorder
             withColumnBorders
             stickyHeader
             className={`${styles.resultsTable} ${isExecuting ? styles.resultsTableExecuting : ''}`}

@@ -1,0 +1,19 @@
+.toolbarButton {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mantine-color-text);
+  opacity: 0.8;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background: var(--mantine-color-default-hover);
+  opacity: 1;
+}
+
+.toolbarButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

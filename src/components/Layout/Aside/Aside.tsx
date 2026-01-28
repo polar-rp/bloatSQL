@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { AppShell, Stack, Center, Text, ThemeIcon } from '@mantine/core';
 import { IconEditCircle } from '@tabler/icons-react';
-import { useIsEditingCell } from '../../../stores/editCellStore';
-import { CellEditForm } from '../../CellEditor';
+import { useIsEditingCell, useIsAddingRow } from '../../../stores/editCellStore';
+import { CellEditForm, AddRowForm } from '../../CellEditor';
 
 export interface HistoryItem {
   query: string;
@@ -34,8 +34,11 @@ function EmptyState() {
 
 function AsideComponent() {
   const isEditing = useIsEditingCell();
+  const isAddingRow = useIsAddingRow();
 
-  return isEditing ? <CellEditForm /> : <EmptyState />;
+  if (isAddingRow) return <AddRowForm />;
+  if (isEditing) return <CellEditForm />;
+  return <EmptyState />;
 }
 
 export const Aside = memo(AsideComponent);

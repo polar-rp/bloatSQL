@@ -113,13 +113,11 @@ export function TableStructureView() {
             <Table
               striped
               highlightOnHover
-              withTableBorder
               withColumnBorders
               stickyHeader
                captionSide="top"
               className={styles.structureTable}
             >
-              <Table.Caption>Table Structure: {selectedTable}</Table.Caption>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Column Name</Table.Th>

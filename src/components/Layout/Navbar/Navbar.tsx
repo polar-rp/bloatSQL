@@ -17,6 +17,7 @@ interface NavbarProps {
   isLoadingDatabases: boolean;
   selectedTable: string | null;
   queryHistory: HistoryItem[];
+  pingMs: number | null;
   onNewConnection: () => void;
   onConnect: (connection: Connection) => void;
   onDisconnect: () => void;
@@ -25,6 +26,7 @@ interface NavbarProps {
   onSelectTable: (tableName: string) => void;
   onDatabaseChange: (database: string) => void;
   onLoadQuery: (query: string) => void;
+  onRefresh: () => void;
 }
 
 function NavbarComponent({
@@ -38,6 +40,7 @@ function NavbarComponent({
   isLoadingDatabases,
   selectedTable,
   queryHistory,
+  pingMs,
   onNewConnection,
   onConnect,
   onDisconnect,
@@ -46,6 +49,7 @@ function NavbarComponent({
   onSelectTable,
   onDatabaseChange,
   onLoadQuery,
+  onRefresh,
 }: NavbarProps) {
   const [tableSearch, setTableSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'tables' | 'history'>('tables');
@@ -79,8 +83,11 @@ function NavbarComponent({
             databases={databases}
             currentDatabase={currentDatabase}
             isLoadingDatabases={isLoadingDatabases}
+            pingMs={pingMs}
             onDatabaseChange={onDatabaseChange}
             onDisconnect={onDisconnect}
+            onRefresh={onRefresh}
+            onEdit={() => activeConnection && onEditConnection(activeConnection)}
           />
         )}
       </AppShell.Section>

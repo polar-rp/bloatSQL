@@ -1,12 +1,11 @@
 .mainContainer {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--app-shell-header-height, 0px));
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--app-shell-header-height, 0px));
 }
 
 .mainContent {
-    flex: 1;
-    min-height: 0;
-    padding: var(--mantine-spacing-md);
-    overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }

@@ -2,6 +2,7 @@ import { ReactNode, memo } from "react";
 import { AppShell, Box } from "@mantine/core";
 import { useNavbarCollapsed, useAsideCollapsed } from "../../../stores/layoutStore";
 import { Footer } from "../Footer";
+import { Toolbar } from "./Toolbar";
 import styles from "./AppLayout.module.css";
 
 interface AppLayoutProps {
@@ -9,6 +10,9 @@ interface AppLayoutProps {
     navbar: ReactNode;
     aside: ReactNode;
     children: ReactNode;
+    toolbarContent?: ReactNode;
+    onNavigateBack?: () => void;
+    onNavigateForward?: () => void;
 }
 
 function AppLayoutComponent({
@@ -16,8 +20,10 @@ function AppLayoutComponent({
     navbar,
     aside,
     children,
+    toolbarContent,
+    onNavigateBack,
+    onNavigateForward,
 }: AppLayoutProps) {
-    // Layout state from store - only re-renders when these specific values change
     const navbarCollapsed = useNavbarCollapsed();
     const asideCollapsed = useAsideCollapsed();
 
@@ -50,6 +56,12 @@ function AppLayoutComponent({
 
                 <AppShell.Main>
                     <Box className={styles.mainContainer}>
+                        <Toolbar
+                            toolbarContent={toolbarContent}
+                            onNavigateBack={onNavigateBack}
+                            onNavigateForward={onNavigateForward}
+                        />
+
                         <Box className={styles.mainContent}>
                             {children}
                         </Box>

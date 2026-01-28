@@ -54,6 +54,7 @@ fn main() {
             commands::export_database,
             commands::update_cell,
             commands::write_text_file,
+            commands::ping_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

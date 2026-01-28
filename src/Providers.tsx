@@ -15,6 +15,23 @@ export function Providers({ children }: ProvidersProps) {
   const theme = createTheme({
     primaryColor,
     defaultRadius,
+    components: {
+      Tooltip: {
+        defaultProps: {
+          bg: 'var(--mantine-color-default)',
+          arrowSize: 8, 
+        },
+        styles: {
+          tooltip: {
+            border: '1px solid var(--mantine-color-default-border)',
+            color: 'var(--mantine-color-text)',
+          },
+          arrow: {
+            border: '1px solid var(--mantine-color-default-border)',
+          },
+        },
+      },
+    },
   });
 
   return (

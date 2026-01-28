@@ -56,7 +56,6 @@ export function CellEditForm() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showSaved, setShowSaved] = useState(false);
 
-  // Initialize form with values from selectedCell to avoid uncontrolled -> controlled warning
   const initialFormValues = selectedCell
     ? Object.entries(selectedCell.rowData).reduce((acc, [key, value]) => {
         acc[key] = formatValue(value);
@@ -131,13 +130,10 @@ export function CellEditForm() {
         });
       }
 
-      // Refresh table data
       await useQueryStore.getState().refreshTable();
 
-      // Mark current values as clean (not dirty)
       form.resetDirty(values);
 
-      // Show "Saved" feedback
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     } catch (err) {
