@@ -48,7 +48,6 @@ function RelationshipEdgeComponent({
             : 'var(--mantine-color-default-border)',
           strokeWidth: selected ? 3 : 2,
         }}
-        markerEnd="url(#diagram-arrow)"
       />
 
       {selected && edgeData && (

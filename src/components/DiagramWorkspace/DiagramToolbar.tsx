@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Group, ActionIcon, Tooltip, Switch, Text } from '@mantine/core';
 import {
   IconZoomIn,
@@ -13,10 +13,30 @@ interface DiagramToolbarProps {
   onResetLayout: () => void;
 }
 
+// Define fitView options OUTSIDE the component to prevent re-renders
+const FIT_VIEW_OPTIONS = { padding: 0.2 };
+
 function DiagramToolbarComponent({ onResetLayout }: DiagramToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const { showColumnTypes, showOnlyKeys, toggleColumnTypes, toggleOnlyKeys } =
-    useDiagramStore();
+
+  // Use individual selectors to avoid unnecessary re-renders
+  const showColumnTypes = useDiagramStore((s) => s.showColumnTypes);
+  const showOnlyKeys = useDiagramStore((s) => s.showOnlyKeys);
+  const toggleColumnTypes = useDiagramStore((s) => s.toggleColumnTypes);
+  const toggleOnlyKeys = useDiagramStore((s) => s.toggleOnlyKeys);
+
+  // Memoize all event handlers to prevent unnecessary re-renders
+  const handleZoomIn = useCallback(() => {
+    zoomIn();
+  }, [zoomIn]);
+
+  const handleZoomOut = useCallback(() => {
+    zoomOut();
+  }, [zoomOut]);
+
+  const handleFitView = useCallback(() => {
+    fitView(FIT_VIEW_OPTIONS);
+  }, [fitView]);
 
   return (
     <Group
@@ -31,19 +51,19 @@ function DiagramToolbarComponent({ onResetLayout }: DiagramToolbarProps) {
     >
       <Group gap="xs">
         <Tooltip label="Zoom In">
-          <ActionIcon variant="subtle" onClick={() => zoomIn()}>
+          <ActionIcon variant="subtle" onClick={handleZoomIn}>
             <IconZoomIn size={18} />
           </ActionIcon>
         </Tooltip>
 
         <Tooltip label="Zoom Out">
-          <ActionIcon variant="subtle" onClick={() => zoomOut()}>
+          <ActionIcon variant="subtle" onClick={handleZoomOut}>
             <IconZoomOut size={18} />
           </ActionIcon>
         </Tooltip>
 
         <Tooltip label="Fit View">
-          <ActionIcon variant="subtle" onClick={() => fitView({ padding: 0.2 })}>
+          <ActionIcon variant="subtle" onClick={handleFitView}>
             <IconFocusCentered size={18} />
           </ActionIcon>
         </Tooltip>

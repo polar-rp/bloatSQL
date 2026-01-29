@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { Center, Loader, Stack, Text, Card } from '@mantine/core';
+import { Center, Loader, Stack, Text } from '@mantine/core';
 import { ReactFlowProvider } from '@xyflow/react';
 
 import { useDiagramStore } from '../../stores/diagramStore';
@@ -11,17 +11,17 @@ import { DiagramCanvas } from './DiagramCanvas';
 
 export function DiagramWorkspace() {
   const activeConnection = useConnectionStore((s) => s.activeConnection);
-  const {
-    nodes,
-    showColumnTypes,
-    showOnlyKeys,
-    isLoading,
-    error,
-    setNodes,
-    setEdges,
-    setLoading,
-    setError,
-  } = useDiagramStore();
+
+  // Use individual selectors to avoid unnecessary re-renders
+  const nodes = useDiagramStore((s) => s.nodes);
+  const showColumnTypes = useDiagramStore((s) => s.showColumnTypes);
+  const showOnlyKeys = useDiagramStore((s) => s.showOnlyKeys);
+  const isLoading = useDiagramStore((s) => s.isLoading);
+  const error = useDiagramStore((s) => s.error);
+  const setNodes = useDiagramStore((s) => s.setNodes);
+  const setEdges = useDiagramStore((s) => s.setEdges);
+  const setLoading = useDiagramStore((s) => s.setLoading);
+  const setError = useDiagramStore((s) => s.setError);
 
   const loadDiagramData = useCallback(async () => {
     if (!activeConnection) {
@@ -75,7 +75,7 @@ export function DiagramWorkspace() {
     if (activeConnection) {
       loadDiagramData();
     }
-  }, [activeConnection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeConnection, loadDiagramData]);
 
   if (!activeConnection) {
     return (

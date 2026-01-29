@@ -1,8 +1,7 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   Panel,
   applyNodeChanges,
@@ -19,58 +18,40 @@ import { RelationshipEdge } from './edges/RelationshipEdge';
 import { DiagramToolbar } from './DiagramToolbar';
 import { getLayoutedElements } from './utils/layoutAlgorithms';
 
-// Define nodeTypes OUTSIDE the component to prevent re-renders (per React Flow docs)
 const nodeTypes = {
   tableNode: TableNode,
 } as const;
 
-// Define edgeTypes OUTSIDE the component to prevent re-renders (per React Flow docs)
 const edgeTypes = {
   relationshipEdge: RelationshipEdge,
 } as const;
 
-// Define fitViewOptions OUTSIDE the component (per React Flow performance docs)
 const fitViewOptions = { padding: 0.2 };
 
 export function DiagramCanvas() {
-  const {
-    nodes,
-    edges,
-    showColumnTypes,
-    showOnlyKeys,
-    setNodes,
-    setEdges,
-  } = useDiagramStore();
+  const [localNodes, setLocalNodes] = useState<Node[]>([]);
+  const [localEdges, setLocalEdges] = useState<Edge[]>([]);
 
-  // Handle node changes
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes) => {
-      setNodes(applyNodeChanges(changes, nodes));
-    },
-    [nodes, setNodes]
-  );
+  const localNodesRef = useRef<Node[]>([]);
+  const localEdgesRef = useRef<Edge[]>([]);
 
-  // Handle edge changes
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => {
-      setEdges(applyEdgeChanges(changes, edges));
-    },
-    [edges, setEdges]
-  );
+  const nodes = useDiagramStore((s) => s.nodes);
+  const edges = useDiagramStore((s) => s.edges);
+  const showColumnTypes = useDiagramStore((s) => s.showColumnTypes);
+  const showOnlyKeys = useDiagramStore((s) => s.showOnlyKeys);
+  const setStoreNodes = useDiagramStore((s) => s.setNodes);
+  const setStoreEdges = useDiagramStore((s) => s.setEdges);
 
-  // Reset layout handler
-  const handleResetLayout = useCallback(() => {
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-      nodes,
-      edges
-    );
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [nodes, edges, setNodes, setEdges]);
+  useEffect(() => {
+    localNodesRef.current = localNodes;
+  }, [localNodes]);
 
-  // Memoize nodes with updated display settings
-  const displayNodes = useMemo<Node[]>(() => {
-    return nodes.map((node) => ({
+  useEffect(() => {
+    localEdgesRef.current = localEdges;
+  }, [localEdges]);
+
+  useEffect(() => {
+    const nodesWithSettings = nodes.map((node) => ({
       ...node,
       data: {
         ...node.data,
@@ -78,41 +59,50 @@ export function DiagramCanvas() {
         showOnlyKeys: showOnlyKeys,
       },
     }));
+    setLocalNodes(nodesWithSettings);
   }, [nodes, showColumnTypes, showOnlyKeys]);
 
-  // SVG marker definition - memoized
-  const markerDefs = useMemo(
-    () => (
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          <marker
-            id="diagram-arrow"
-            markerWidth="12"
-            markerHeight="12"
-            refX="10"
-            refY="6"
-            orient="auto"
-            markerUnits="userSpaceOnUse"
-          >
-            <path
-              d="M2,2 L10,6 L2,10 L4,6 Z"
-              fill="var(--mantine-primary-color-filled)"
-            />
-          </marker>
-        </defs>
-      </svg>
-    ),
+  useEffect(() => {
+    setLocalEdges(edges);
+  }, [edges]);
+
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => {
+      setLocalNodes((nds) => applyNodeChanges(changes, nds));
+    },
     []
   );
 
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => {
+      setLocalEdges((eds) => applyEdgeChanges(changes, eds));
+    },
+    []
+  );
+
+  const handleNodesChangeEnd = useCallback(() => {
+    setStoreNodes(localNodesRef.current);
+  }, [setStoreNodes]);
+
+  const handleResetLayout = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      localNodesRef.current,
+      localEdgesRef.current
+    );
+    setLocalNodes(layoutedNodes);
+    setLocalEdges(layoutedEdges);
+    setStoreNodes(layoutedNodes);
+    setStoreEdges(layoutedEdges);
+  }, [setStoreNodes, setStoreEdges]);
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {markerDefs}
       <ReactFlow
-        nodes={displayNodes}
-        edges={edges}
+        nodes={localNodes}
+        edges={localEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStop={handleNodesChangeEnd}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -122,13 +112,13 @@ export function DiagramCanvas() {
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={16} size={1} />
-        <Controls showInteractive={false} />
         <MiniMap
           nodeStrokeWidth={3}
           zoomable
           pannable
+          bgColor='var(--mantine-color-body)'
+          maskColor='var(--mantine-primary-color-light)'
           style={{
-            background: 'var(--mantine-color-body)',
             border: '1px solid var(--mantine-color-default-border)',
           }}
         />
