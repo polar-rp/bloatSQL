@@ -36,24 +36,18 @@ export function QueryWorkspace({
   const viewMode = useViewMode();
   const queryEditorVisible = useQueryEditorVisible();
 
-  const toggleEditorHeight = () => {
-    setEditorHeight((prev) => (prev === '45vh' ? '30vh' : '45vh'));
-  };
-
   return (
     <Box h="100%">
       {viewMode === 'data' ? (
         queryEditorVisible ? (
-          <Stack gap="md" h="100%">
+          <Stack gap={0} h="100%">
             <QueryEditorCard
               query={query}
               onQueryChange={onQueryChange}
               onExecute={onExecute}
               isExecuting={isExecuting}
               isConnected={isConnected}
-              lastExecutionTime={lastExecutionTime}
               editorHeight={editorHeight}
-              onToggleHeight={toggleEditorHeight}
             />
             <Box className={styles.resultsContainer}>
               <ResultsCard
@@ -66,7 +60,6 @@ export function QueryWorkspace({
             </Box>
           </Stack>
         ) : (
-          <Box h="100%">
             <ResultsCard
               results={results}
               isExecuting={isExecuting}
@@ -74,7 +67,6 @@ export function QueryWorkspace({
               onClearError={onClearError}
               onOpenExportModal={onOpenExportModal}
             />
-          </Box>
         )
       ) : (
         <TableStructureView />

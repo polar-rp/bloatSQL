@@ -1,20 +1,6 @@
-import {
-  Card,
-  Group,
-  Text,
-  Badge,
-  Button,
-  ActionIcon,
-  Kbd,
-  Box,
-} from '@mantine/core';
-import {
-  IconChevronDown,
-  IconChevronUp,
-  IconFileCode,
-  IconPlayerPlay,
-} from '@tabler/icons-react';
+import { Group, Kbd, Stack } from '@mantine/core';
 import { MonacoSqlEditor } from './MonacoSqlEditor';
+import { SplitButton, SplitButtonMenuItem } from '../common';
 
 interface QueryEditorCardProps {
   query: string;
@@ -22,9 +8,7 @@ interface QueryEditorCardProps {
   onExecute: () => void;
   isExecuting: boolean;
   isConnected: boolean;
-  lastExecutionTime: number | null;
   editorHeight: number | string;
-  onToggleHeight: () => void;
 }
 
 export function QueryEditorCard({
@@ -33,74 +17,49 @@ export function QueryEditorCard({
   onExecute,
   isExecuting,
   isConnected,
-  lastExecutionTime,
   editorHeight,
-  onToggleHeight,
 }: QueryEditorCardProps) {
+  const menuItems: SplitButtonMenuItem[] = [
+    {
+      label: 'Run All',
+      onClick: () => {
+        // TODO: Implement run all functionality
+        console.log('Run all queries');
+      },
+    },
+    {
+      label: 'Run Selection',
+      onClick: () => {
+        // TODO: Implement run selection functionality
+        console.log('Run selected query');
+      },
+    },
+  ];
+
   return (
-    <Card
-      withBorder
-      style={{
-        height: editorHeight,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Group justify="space-between" mb="xs">
-        <Group gap="xs">
-          <IconFileCode size={16} />
-          <Text size="sm" fw={500}>
-            Query Editor
-          </Text>
-          {isConnected && (
-            <Badge color="green" size="xs">
-              Connected
-            </Badge>
-          )}
-        </Group>
-        <Group gap="xs">
-          <Text size="xs" c="dimmed">
-            <Kbd size="xs">Ctrl</Kbd> + <Kbd size="xs">Enter</Kbd> to run
-          </Text>
-          <Text size="xs" c="dimmed">
-            |
-          </Text>
-          <Text size="xs" c="dimmed">
-            <Kbd size="xs">Shift</Kbd> + <Kbd size="xs">Alt</Kbd> + <Kbd size="xs">F</Kbd> to format
-          </Text>
-          <ActionIcon variant="subtle" size="sm" onClick={onToggleHeight}>
-            {editorHeight === '45vh' || editorHeight === 250 ? (
-              <IconChevronUp size={16} />
-            ) : (
-              <IconChevronDown size={16} />
-            )}
-          </ActionIcon>
-        </Group>
-      </Group>
+    <Stack gap={0} style={{ height: editorHeight }}>
+      <MonacoSqlEditor
+        value={query}
+        onChange={onQueryChange}
+        onExecute={onExecute}
+      />
 
-      <Box h={'100%'}>
-        <MonacoSqlEditor
-          value={query}
-          onChange={onQueryChange}
-          onExecute={onExecute}
-        />
-      </Box>
-
-      <Group justify="space-between" mt="xs">
-        <Button
-          leftSection={<IconPlayerPlay size={16} />}
+      <Group justify="flex-end" px={'md'} py={4}>
+        <SplitButton
+          label="Run Current"
           onClick={onExecute}
-          loading={isExecuting}
+          menuItems={menuItems}
+          size="xs"
+          variant="default"
+          rightSection={
+            <Group gap={4}>
+              <Kbd size={'xs'}>Ctrl</Kbd> <Kbd size={'xs'}>Enter</Kbd>
+            </Group>
+          }
           disabled={!isConnected || !query.trim()}
-        >
-          Execute
-        </Button>
-        {lastExecutionTime !== null && (
-          <Text size="sm" c="dimmed">
-            Execution time: {lastExecutionTime}ms
-          </Text>
-        )}
+          loading={isExecuting}
+        />
       </Group>
-    </Card>
+    </Stack>
   );
 }

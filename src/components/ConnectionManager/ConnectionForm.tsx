@@ -10,6 +10,7 @@ import {
   Card,
   Divider,
   Text,
+  Fieldset,
   ActionIcon,
   Flex,
 } from '@mantine/core';
@@ -157,6 +158,18 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     }
   };
 
+  // Check if all required fields are filled
+  const isFormComplete =
+    form.values.name.trim() !== '' &&
+    form.values.host.trim() !== '' &&
+    form.values.username.trim() !== '' &&
+    form.values.database.trim() !== '' &&
+    form.values.port > 0 &&
+    form.values.port <= 65535;
+
+  // Button should be disabled if form is not dirty (unchanged) or incomplete
+  const isSaveDisabled = !form.isDirty() || !isFormComplete;
+
   return (
     <Stack gap="md">
       {error && (
@@ -176,9 +189,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
       )}
 
       {/* Import Card */}
-      <Card withBorder padding="sm">
-        <Stack gap="xs">
-          <Text size="sm" fw={500}>Import from URL</Text>
+       <Fieldset legend="Import from URL" >
           <Group gap="xs" align="flex-start">
             <TextInput
               placeholder="mysql://user:pass@host:port/db or postgresql://..."
@@ -193,8 +204,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
               }
             />
           </Group>
-        </Stack>
-      </Card>
+       </Fieldset>
 
       <Divider label="or fill manually" labelPosition="center" />
 
@@ -273,6 +283,7 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
         <Button
           onClick={handleSave}
           loading={isLoading}
+          disabled={isSaveDisabled}
         >
           Save Connection
         </Button>

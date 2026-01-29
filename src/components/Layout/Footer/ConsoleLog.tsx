@@ -47,7 +47,7 @@ function ConsoleLogComponent() {
 
       {logs.length > 0 && (
         <Box pos={'absolute'} top={18} right={18} style={{  zIndex: 10 }}>
-          <Tooltip label="Clear logs">
+          <Tooltip label="Clear logs" withArrow>
             <ActionIcon
               variant="light"
               onClick={clearLogs}
