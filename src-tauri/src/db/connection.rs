@@ -23,12 +23,54 @@ pub struct QueryResult {
 }
 
 /// Error returned from database operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QueryError {
     /// Human-readable error message.
+    #[serde(default)]
     pub message: String,
     /// Optional error code for programmatic handling.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
+    /// Additional detail from database (e.g., PostgreSQL DETAIL).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    /// Hint from database on how to fix the issue (e.g., PostgreSQL HINT).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+}
+
+impl QueryError {
+    /// Creates a simple error with just a message.
+    pub fn simple(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            code: None,
+            detail: None,
+            hint: None,
+        }
+    }
+
+    /// Creates an error with a message and code.
+    pub fn with_code(message: impl Into<String>, code: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            code: Some(code.into()),
+            detail: None,
+            hint: None,
+        }
+    }
+
+    /// Adds detail to the error.
+    pub fn with_detail(mut self, detail: impl Into<String>) -> Self {
+        self.detail = Some(detail.into());
+        self
+    }
+
+    /// Adds hint to the error.
+    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
+        self.hint = Some(hint.into());
+        self
+    }
 }
 
 /// Error codes for consistent error handling across drivers.
@@ -152,7 +194,7 @@ pub trait DatabaseConnection: Send + Sync {
     /// # Arguments
     /// * `table_name` - Name of the table
     /// * `column_name` - Column to update
-    /// * `new_value` - New value (will be properly escaped)
+    /// * `new_value` - New value (None for NULL, Some(value) for a string value)
     /// * `primary_key_column` - Name of the primary key column
     /// * `primary_key_value` - Value of the primary key
     ///
@@ -162,7 +204,7 @@ pub trait DatabaseConnection: Send + Sync {
         &self,
         table_name: &str,
         column_name: &str,
-        new_value: &str,
+        new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
     ) -> DbResult<()>;

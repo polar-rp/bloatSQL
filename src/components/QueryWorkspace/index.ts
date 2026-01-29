@@ -1,4 +1,4 @@
 export { QueryWorkspace } from './QueryWorkspace';
 export { QueryEditorCard } from './QueryEditorCard';
 export { ResultsCard } from './ResultsCard';
-export { TableStructureView } from './TableStructureView';
+export { TableStructureView } from '../TableStructure';

@@ -11,6 +11,51 @@ use tokio::time::timeout;
 use tokio_postgres::{types::Type, Client, NoTls, Row};
 use tracing::{debug, error, warn};
 
+/// Converts a tokio_postgres error to a QueryError with full details.
+fn pg_error_to_query_error(err: tokio_postgres::Error, code: &str) -> QueryError {
+    // Try to extract detailed PostgreSQL error information
+    if let Some(db_err) = err.as_db_error() {
+        let mut query_err = QueryError::with_code(db_err.message().to_string(), code);
+
+        // Add PostgreSQL error code (e.g., "22P02" for invalid_text_representation)
+        if let Some(pg_code) = Some(db_err.code().code()) {
+            query_err.code = Some(pg_code.to_string());
+        }
+
+        // Add detail if available
+        if let Some(detail) = db_err.detail() {
+            query_err = query_err.with_detail(detail);
+        }
+
+        // Add hint if available
+        if let Some(hint) = db_err.hint() {
+            query_err = query_err.with_hint(hint);
+        }
+
+        // If no hint provided, add contextual hint based on error code
+        if query_err.hint.is_none() {
+            let hint = match db_err.code().code() {
+                "22P02" => Some("Value has invalid format for the target column type"),
+                "22003" => Some("Value is out of range for the target column type"),
+                "23502" => Some("Column does not allow NULL values"),
+                "23503" => Some("Referenced value does not exist (foreign key violation)"),
+                "23505" => Some("Value already exists (unique constraint violation)"),
+                "42703" => Some("Check column name spelling"),
+                "42P01" => Some("Check table name spelling"),
+                _ => None,
+            };
+            if let Some(h) = hint {
+                query_err = query_err.with_hint(h);
+            }
+        }
+
+        query_err
+    } else {
+        // Fallback for non-database errors
+        QueryError::with_code(err.to_string(), code)
+    }
+}
+
 /// PostgreSQL database connection implementation.
 pub struct PostgresConnection {
     client: Arc<Mutex<Client>>,
@@ -66,6 +111,7 @@ impl PostgresConnection {
                 .map_err(|e| QueryError {
                     message: format!("TLS configuration error: {}", e),
                     code: Some(error_codes::TLS_ERROR.to_string()),
+            ..Default::default()
                 })?;
 
             let tls_connector = MakeTlsConnector::new(connector);
@@ -85,6 +131,7 @@ impl PostgresConnection {
                         return Err(QueryError {
                             message: format!("SSL connection failed: {}", e),
                             code: Some(error_codes::SSL_ERROR.to_string()),
+            ..Default::default()
                         });
                     }
                     warn!("SSL connection failed, falling back to non-SSL: {}", e);
@@ -98,6 +145,7 @@ impl PostgresConnection {
             .map_err(|e| QueryError {
                 message: format!("Connection failed: {}", e),
                 code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         tokio::spawn(async move {
@@ -335,10 +383,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Connection test timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         Ok(())
@@ -353,10 +403,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let columns: Vec<String> = if !rows.is_empty() {
@@ -410,10 +462,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let tables: Vec<String> = rows
@@ -436,10 +490,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let databases: Vec<String> = rows
@@ -509,10 +565,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let columns: Vec<TableColumn> = rows
@@ -558,10 +616,12 @@ impl DatabaseConnection for PostgresConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let relationships: Vec<TableRelationship> = rows
@@ -590,33 +650,46 @@ impl DatabaseConnection for PostgresConnection {
         &self,
         table_name: &str,
         column_name: &str,
-        new_value: &str,
+        new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
     ) -> DbResult<()> {
         let client = self.client.lock().await;
 
-        // Build query with escaped identifiers and parameterized values
-        let query = format!(
-            "UPDATE \"{}\" SET \"{}\" = $1 WHERE \"{}\" = $2",
-            Self::escape_identifier(table_name),
-            Self::escape_identifier(column_name),
-            Self::escape_identifier(primary_key_column)
-        );
+        // Build UPDATE query with proper escaping
+        // We use simple_query to avoid type inference issues with parameterized queries
+        // since we don't know the column type and need PostgreSQL to handle the conversion
+        let query = match new_value {
+            Some(value) => {
+                format!(
+                    "UPDATE \"{}\" SET \"{}\" = '{}' WHERE \"{}\" = '{}'",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_string(value),
+                    Self::escape_identifier(primary_key_column),
+                    Self::escape_string(primary_key_value)
+                )
+            }
+            None => {
+                format!(
+                    "UPDATE \"{}\" SET \"{}\" = NULL WHERE \"{}\" = '{}'",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_identifier(primary_key_column),
+                    Self::escape_string(primary_key_value)
+                )
+            }
+        };
 
-        timeout(
-            DEFAULT_QUERY_TIMEOUT,
-            client.execute(&query, &[&new_value, &primary_key_value]),
-        )
-        .await
-        .map_err(|_| QueryError {
-            message: "Update timed out".to_string(),
-            code: Some(error_codes::TIMEOUT_ERROR.to_string()),
-        })?
-        .map_err(|e| QueryError {
-            message: e.to_string(),
-            code: Some(error_codes::QUERY_ERROR.to_string()),
-        })?;
+        debug!("Executing update query: {}", query);
+
+        timeout(DEFAULT_QUERY_TIMEOUT, client.simple_query(&query))
+            .await
+            .map_err(|_| {
+                QueryError::with_code("Update operation timed out", error_codes::TIMEOUT_ERROR)
+                    .with_hint("The database took too long to respond. Try again or check database load.")
+            })?
+            .map_err(|e| pg_error_to_query_error(e, error_codes::QUERY_ERROR))?;
 
         Ok(())
     }
@@ -640,6 +713,7 @@ impl DatabaseConnection for PostgresConnection {
             let rows = client.query(query, &[]).await.map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
             rows.iter()
@@ -676,6 +750,7 @@ impl DatabaseConnection for PostgresConnection {
                     .map_err(|e| QueryError {
                         message: e.to_string(),
                         code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                     })?;
 
                 sql_content.push_str(&format!(
@@ -733,6 +808,7 @@ impl DatabaseConnection for PostgresConnection {
                     let data_rows = client.query(&data_query, &[]).await.map_err(|e| QueryError {
                         message: e.to_string(),
                         code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                     })?;
 
                     if data_rows.is_empty() {

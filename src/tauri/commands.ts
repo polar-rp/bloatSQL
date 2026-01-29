@@ -1,5 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Connection, QueryResult, ExportOptions, TableColumn, TableRelationship } from '../types/database';
+import {
+  Connection,
+  QueryResult,
+  ExportOptions,
+  TableColumn,
+  TableRelationship,
+  UpdateCellRequest,
+  UpdateCellResult,
+  formatUpdateCellError,
+} from '../types/database';
 
 interface BackendConnection {
   id: string;
@@ -173,13 +182,39 @@ export const tauriCommands = {
     return invoke<number>('ping_connection');
   },
 
-  async updateCell(params: {
-    tableName: string;
-    columnName: string;
-    newValue: string;
-    whereClause: string;
-  }): Promise<void> {
-    await invoke('update_cell', params);
+  async updateCell(params: UpdateCellRequest): Promise<void> {
+    const request = {
+      table_name: params.tableName,
+      column_name: params.columnName,
+      new_value: params.newValue,
+      primary_key_column: params.primaryKeyColumn,
+      primary_key_value: params.primaryKeyValue,
+    };
+
+    console.log('Invoking update_cell with request:', request);
+
+    // Backend returns UpdateCellResult with success/error
+    interface BackendUpdateCellResult {
+      success: boolean;
+      error?: {
+        message: string;
+        code?: string;
+        detail?: string;
+        hint?: string;
+        table: string;
+        column: string;
+      };
+    }
+
+    const result = await invoke<BackendUpdateCellResult>('update_cell', { request });
+
+    if (!result.success && result.error) {
+      console.error('update_cell failed:', result.error);
+      // Throw a formatted error message that includes all details
+      throw new Error(formatUpdateCellError(result.error));
+    }
+
+    console.log('update_cell success');
   },
 };
 

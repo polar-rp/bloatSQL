@@ -75,8 +75,7 @@ export function CellEditForm() {
         initialValues[key] = formatValue(value);
       });
       form.setInitialValues(initialValues);
-      form.setValues(initialValues);
-      form.resetDirty(initialValues);
+      form.reset();
       setShowSaved(false);
 
       setTimeout(() => {
@@ -98,7 +97,10 @@ export function CellEditForm() {
       return;
     }
 
+    // Only consider columns that exist in the current table's row data
+    const validColumns = Object.keys(selectedCell.rowData);
     const changedColumns = Object.entries(values).filter(([key, value]) => {
+      if (!validColumns.includes(key)) return false;
       const originalValue = formatValue(selectedCell.rowData[key]);
       return value !== originalValue;
     });
@@ -111,23 +113,18 @@ export function CellEditForm() {
     setError(null);
 
     try {
-      const whereClause = `\`${selectedCell.primaryKeyColumn}\` = ${
-        typeof selectedCell.primaryKeyValue === 'string'
-          ? `'${selectedCell.primaryKeyValue.replace(/'/g, "''")}'`
-          : selectedCell.primaryKeyValue
-      }`;
-
       for (const [columnName, newValue] of changedColumns) {
-        const formattedValue = newValue === '' || newValue === null
-          ? 'NULL'
-          : `'${newValue.replace(/'/g, "''")}'`;
-
-        await tauriCommands.updateCell({
+        const updateRequest = {
           tableName: selectedCell.tableName,
           columnName,
-          newValue: formattedValue,
-          whereClause,
-        });
+          newValue: newValue === '' ? null : newValue,
+          primaryKeyColumn: selectedCell.primaryKeyColumn,
+          primaryKeyValue: String(selectedCell.primaryKeyValue),
+        };
+
+        console.log('Updating cell:', updateRequest);
+
+        await tauriCommands.updateCell(updateRequest);
       }
 
       await useQueryStore.getState().refreshTable();
@@ -137,8 +134,10 @@ export function CellEditForm() {
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to update cell';
-      setError(errorMsg);
+      console.error('Failed to update cell:', err);
+      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      const detailedError = `Failed to update cell: ${errorMsg}`;
+      setError(detailedError);
     } finally {
       setSaving(false);
     }
@@ -183,6 +182,14 @@ export function CellEditForm() {
             withCloseButton
             onClose={() => setError(null)}
             mb="md"
+            styles={{
+              message: {
+                fontFamily: 'monospace',
+                fontSize: 'var(--mantine-font-size-sm)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              },
+            }}
           >
             {error}
           </Alert>

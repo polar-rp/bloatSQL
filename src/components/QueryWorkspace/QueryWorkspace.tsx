@@ -3,7 +3,7 @@ import { Box, Stack, Center, Text } from '@mantine/core';
 import { QueryResult } from '../../types/database';
 import { QueryEditorCard } from './QueryEditorCard';
 import { ResultsCard } from './ResultsCard';
-import { TableStructureView } from './TableStructureView';
+import { TableStructureView } from '../TableStructure';
 import { DiagramWorkspace } from '../DiagramWorkspace';
 import { useViewMode, useQueryEditorVisible } from '../../stores/tableViewStore';
 import styles from './QueryWorkspace.module.css';

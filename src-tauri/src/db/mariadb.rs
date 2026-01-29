@@ -41,6 +41,7 @@ impl MariaDbConnection {
         let conn = pool.get_conn().await.map_err(|e| QueryError {
             message: format!("Failed to connect: {}", e),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
         drop(conn);
 
@@ -99,6 +100,7 @@ impl MariaDbConnection {
                         return Err(QueryError {
                             message: format!("SSL connection failed: {}", e),
                             code: Some(error_codes::SSL_ERROR.to_string()),
+            ..Default::default()
                         });
                     }
                     warn!("SSL connection failed, falling back to non-SSL: {}", e);
@@ -112,6 +114,7 @@ impl MariaDbConnection {
         pool.get_conn().await.map_err(|e| QueryError {
             message: format!("Connection failed: {}", e),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         debug!("MariaDB non-SSL connection established");
@@ -124,6 +127,7 @@ impl MariaDbConnection {
         let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         // Ensure we're using the correct database
@@ -131,6 +135,7 @@ impl MariaDbConnection {
         conn.query_drop(&query).await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         Ok(conn)
@@ -238,10 +243,12 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|_| QueryError {
                 message: "Connection test timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         Ok(())
@@ -256,10 +263,12 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let columns: Vec<String> = result
@@ -276,6 +285,7 @@ impl DatabaseConnection for MariaDbConnection {
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })? {
             row_count += 1;
 
@@ -313,10 +323,12 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let mut tables: Vec<String> = Vec::with_capacity(100);
@@ -325,6 +337,7 @@ impl DatabaseConnection for MariaDbConnection {
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })? {
             let table_name: String = row.get(0).unwrap_or_default();
             tables.push(table_name);
@@ -337,6 +350,7 @@ impl DatabaseConnection for MariaDbConnection {
         let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         let result = timeout(DEFAULT_QUERY_TIMEOUT, conn.query_iter("SHOW DATABASES"))
@@ -344,10 +358,12 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let mut databases: Vec<String> = Vec::with_capacity(20);
@@ -356,6 +372,7 @@ impl DatabaseConnection for MariaDbConnection {
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })? {
             let db_name: String = row.get(0).unwrap_or_default();
             databases.push(db_name);
@@ -369,12 +386,14 @@ impl DatabaseConnection for MariaDbConnection {
         let mut conn = self.pool.get_conn().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         let query = format!("USE `{}`", Self::escape_identifier(database_name));
         conn.query_drop(&query).await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         // Update the stored database name for future connections
@@ -400,6 +419,7 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?
             .unwrap_or_default();
 
@@ -424,10 +444,12 @@ impl DatabaseConnection for MariaDbConnection {
         .map_err(|_| QueryError {
             message: "Query timed out".to_string(),
             code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
         })?
         .map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         let mut columns: Vec<TableColumn> = Vec::with_capacity(50);
@@ -436,6 +458,7 @@ impl DatabaseConnection for MariaDbConnection {
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })? {
             let name: Value = row.get(0).unwrap_or(Value::NULL);
             let column_type: Value = row.get(1).unwrap_or(Value::NULL);
@@ -495,6 +518,7 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?
             .unwrap_or_default();
 
@@ -514,10 +538,12 @@ impl DatabaseConnection for MariaDbConnection {
             .map_err(|_| QueryError {
                 message: "Query timed out".to_string(),
                 code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
             })?
             .map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
         let mut relationships: Vec<TableRelationship> = Vec::new();
@@ -526,6 +552,7 @@ impl DatabaseConnection for MariaDbConnection {
         while let Some(row) = result.next().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
         })? {
             let from_table: String = row.get(0).unwrap_or_default();
             let from_column: String = row.get(1).unwrap_or_default();
@@ -549,6 +576,7 @@ impl DatabaseConnection for MariaDbConnection {
         self.pool.clone().disconnect().await.map_err(|e| QueryError {
             message: e.to_string(),
             code: Some(error_codes::CONNECTION_ERROR.to_string()),
+            ..Default::default()
         })?;
 
         debug!("MariaDB connection disconnected");
@@ -559,33 +587,63 @@ impl DatabaseConnection for MariaDbConnection {
         &self,
         table_name: &str,
         column_name: &str,
-        new_value: &str,
+        new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
     ) -> DbResult<()> {
         let mut conn = self.get_conn().await?;
 
-        // Build query with escaped identifiers and parameterized value
-        let query = format!(
-            "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
-            Self::escape_identifier(table_name),
-            Self::escape_identifier(column_name),
-            Self::escape_identifier(primary_key_column)
-        );
+        // Handle NULL and non-NULL cases separately to avoid type serialization issues
+        match new_value {
+            Some(value) => {
+                let query = format!(
+                    "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_identifier(primary_key_column)
+                );
 
-        timeout(
-            DEFAULT_QUERY_TIMEOUT,
-            conn.exec_drop(&query, (new_value, primary_key_value)),
-        )
-        .await
-        .map_err(|_| QueryError {
-            message: "Update timed out".to_string(),
-            code: Some(error_codes::TIMEOUT_ERROR.to_string()),
-        })?
-        .map_err(|e| QueryError {
-            message: e.to_string(),
-            code: Some(error_codes::QUERY_ERROR.to_string()),
-        })?;
+                timeout(
+                    DEFAULT_QUERY_TIMEOUT,
+                    conn.exec_drop(&query, (value, primary_key_value)),
+                )
+                .await
+                .map_err(|_| QueryError {
+                    message: "Update timed out".to_string(),
+                    code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
+                })?
+                .map_err(|e| QueryError {
+                    message: e.to_string(),
+                    code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
+                })?;
+            }
+            None => {
+                let query = format!(
+                    "UPDATE `{}` SET `{}` = NULL WHERE `{}` = ?",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_identifier(primary_key_column)
+                );
+
+                timeout(
+                    DEFAULT_QUERY_TIMEOUT,
+                    conn.exec_drop(&query, (primary_key_value,)),
+                )
+                .await
+                .map_err(|_| QueryError {
+                    message: "Update timed out".to_string(),
+                    code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            ..Default::default()
+                })?
+                .map_err(|e| QueryError {
+                    message: e.to_string(),
+                    code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
+                })?;
+            }
+        }
 
         Ok(())
     }
@@ -606,6 +664,7 @@ impl DatabaseConnection for MariaDbConnection {
             let result = conn.query_iter("SHOW TABLES").await.map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })?;
 
             let mut tables: Vec<String> = Vec::new();
@@ -613,6 +672,7 @@ impl DatabaseConnection for MariaDbConnection {
             while let Some(row) = result.next().await.map_err(|e| QueryError {
                 message: e.to_string(),
                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
             })? {
                 let table_name: String = row.get(0).unwrap_or_default();
                 tables.push(table_name);
@@ -643,12 +703,14 @@ impl DatabaseConnection for MariaDbConnection {
                         .map_err(|e| QueryError {
                             message: e.to_string(),
                             code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                         })?;
 
                 let mut create_result = create_result;
                 if let Some(row) = create_result.next().await.map_err(|e| QueryError {
                     message: e.to_string(),
                     code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                 })? {
                     let create_statement: String = row.get(1).unwrap_or_default();
                     sql_content.push_str(&create_statement);
@@ -674,6 +736,7 @@ impl DatabaseConnection for MariaDbConnection {
                             .map_err(|e| QueryError {
                                 message: e.to_string(),
                                 code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                             })?;
 
                     let columns: Vec<String> = data_result
@@ -688,6 +751,7 @@ impl DatabaseConnection for MariaDbConnection {
                     while let Some(row) = data_result.next().await.map_err(|e| QueryError {
                         message: e.to_string(),
                         code: Some(error_codes::QUERY_ERROR.to_string()),
+            ..Default::default()
                     })? {
                         rows_in_batch += 1;
                         let mut values: Vec<String> = Vec::with_capacity(columns.len());

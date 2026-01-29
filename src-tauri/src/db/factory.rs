@@ -44,13 +44,13 @@ pub async fn create_connection(
                 .await?;
             Ok(Arc::new(conn))
         }
-        _ => Err(QueryError {
-            message: format!(
+        _ => Err(QueryError::with_code(
+            format!(
                 "Unsupported database type: '{}'. Supported types: mariadb, mysql, postgresql, postgres",
                 db_type
             ),
-            code: Some("INVALID_DB_TYPE".to_string()),
-        }),
+            "INVALID_DB_TYPE",
+        )),
     }
 }
 

@@ -43,7 +43,7 @@ pub struct ExportOptions {
 pub struct UpdateCellRequest {
     pub table_name: String,
     pub column_name: String,
-    pub new_value: String,
+    pub new_value: Option<String>,
     pub primary_key_column: String,
     pub primary_key_value: String,
 }
@@ -332,37 +332,118 @@ pub async fn export_database(
     }
 }
 
+/// Result of a cell update operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCellResult {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<UpdateCellError>,
+}
+
+/// Detailed error information for cell update failures.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCellError {
+    /// Human-readable error message.
+    pub message: String,
+    /// Database error code (e.g., PostgreSQL SQLSTATE).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    /// Additional detail from database.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    /// Hint on how to fix the issue.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+    /// The table being updated.
+    pub table: String,
+    /// The column being updated.
+    pub column: String,
+}
+
 /// Updates a single cell value in a table.
 ///
-/// Uses parameterized queries to prevent SQL injection.
+/// Returns a structured result with detailed error information on failure.
 #[tauri::command]
 pub async fn update_cell(
     request: UpdateCellRequest,
     active_conn: tauri::State<'_, ActiveConnection>,
-) -> Result<(), String> {
+) -> Result<UpdateCellResult, String> {
+    debug!("update_cell called with request: {:?}", request);
+
     let active = active_conn.lock().await;
     match &*active {
         Some(conn) => {
-            conn.update_cell(
-                &request.table_name,
-                &request.column_name,
-                &request.new_value,
-                &request.primary_key_column,
-                &request.primary_key_value,
-            )
-            .await
-            .map_err(|e| e.message)?;
-
             debug!(
-                "Updated cell in {}.{} where {} = {}",
+                "Executing update: table={}, column={}, pk_column={}, pk_value={}, new_value={:?}",
                 request.table_name,
                 request.column_name,
                 request.primary_key_column,
-                request.primary_key_value
+                request.primary_key_value,
+                request.new_value
             );
-            Ok(())
+
+            match conn
+                .update_cell(
+                    &request.table_name,
+                    &request.column_name,
+                    request.new_value.as_deref(),
+                    &request.primary_key_column,
+                    &request.primary_key_value,
+                )
+                .await
+            {
+                Ok(()) => {
+                    debug!(
+                        "Successfully updated cell in {}.{} where {} = {} to {:?}",
+                        request.table_name,
+                        request.column_name,
+                        request.primary_key_column,
+                        request.primary_key_value,
+                        request.new_value
+                    );
+                    Ok(UpdateCellResult {
+                        success: true,
+                        error: None,
+                    })
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to update {}.{}: {} (code: {:?}, detail: {:?}, hint: {:?})",
+                        request.table_name,
+                        request.column_name,
+                        e.message,
+                        e.code,
+                        e.detail,
+                        e.hint
+                    );
+                    Ok(UpdateCellResult {
+                        success: false,
+                        error: Some(UpdateCellError {
+                            message: e.message,
+                            code: e.code,
+                            detail: e.detail,
+                            hint: e.hint,
+                            table: request.table_name,
+                            column: request.column_name,
+                        }),
+                    })
+                }
+            }
         }
-        None => Err("No active connection".to_string()),
+        None => {
+            tracing::error!("No active database connection");
+            Ok(UpdateCellResult {
+                success: false,
+                error: Some(UpdateCellError {
+                    message: "No active database connection".to_string(),
+                    code: Some("NO_CONNECTION".to_string()),
+                    detail: None,
+                    hint: Some("Please connect to a database first".to_string()),
+                    table: request.table_name,
+                    column: request.column_name,
+                }),
+            })
+        }
     }
 }
 

@@ -3,6 +3,7 @@ import { tauriCommands } from '../tauri/commands';
 import { QueryResult, DatabaseType } from '../types/database';
 import { useConnectionStore } from './connectionStore';
 import { useConsoleLogStore } from './consoleLogStore';
+import { useEditCellStore } from './editCellStore';
 
 interface QueryState {
   queryText: string;
@@ -164,6 +165,9 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
     if (loadedTable === tableName) {
       return;
     }
+
+    // Clear cell selection when changing tables to prevent stale form data
+    useEditCellStore.getState().clearSelection();
 
     const activeConnection = useConnectionStore.getState().activeConnection;
     const formattedTableName = formatTableName(tableName, activeConnection?.dbType);
