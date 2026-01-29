@@ -1,4 +1,4 @@
-use crate::db::{create_connection, DatabaseConnection, TableColumn};
+use crate::db::{create_connection, DatabaseConnection, TableColumn, TableRelationship};
 use crate::storage::{ConnectionsStore, StoredConnection};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -265,6 +265,23 @@ pub async fn get_table_columns(
                 .await
                 .map_err(|e| e.message)?;
             Ok(columns)
+        }
+        None => Err("No active connection".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_table_relationships(
+    active_conn: tauri::State<'_, ActiveConnection>,
+) -> Result<Vec<TableRelationship>, String> {
+    let active = active_conn.lock().await;
+    match &*active {
+        Some(conn) => {
+            let relationships = conn
+                .get_table_relationships()
+                .await
+                .map_err(|e| e.message)?;
+            Ok(relationships)
         }
         None => Err("No active connection".to_string()),
     }

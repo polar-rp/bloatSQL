@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ViewMode = 'data' | 'structure';
+export type ViewMode = 'data' | 'structure' | 'diagram';
 
 interface TableViewState {
   selectedTable: string | null;

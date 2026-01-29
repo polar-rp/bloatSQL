@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack } from "@mantine/core";
-import { IconTable, IconList, IconSql, IconPlus } from "@tabler/icons-react";
+import { IconTable, IconList, IconSql, IconPlus, IconSchema } from "@tabler/icons-react";
 import styles from "./Footer.module.css";
 import { useFooterCollapsed, useLayoutStore } from "../../../stores/layoutStore";
 import {
@@ -32,8 +32,8 @@ function FooterComponent() {
           <Group gap="xs">
             <SegmentedControl
               value={viewMode}
-              onChange={(value) => setViewMode(value as 'data' | 'structure')}
-              disabled={!selectedTable}
+              onChange={(value) => setViewMode(value as 'data' | 'structure' | 'diagram')}
+              disabled={!selectedTable && viewMode !== 'diagram'}
               data={[
                 {
                   value: 'data',
@@ -53,38 +53,51 @@ function FooterComponent() {
                     </Center>
                   ),
                 },
+                {
+                  value: 'diagram',
+                  label: (
+                    <Center className={styles.segmentLabel}>
+                      <IconSchema size={16} stroke={1.5} />
+                      <span>Diagram</span>
+                    </Center>
+                  ),
+                },
               ]}
             />
 
-            <Button
-              variant="default"
-              leftSection={<IconPlus size={16} />}
-              disabled={!selectedTable || viewMode !== 'data'}
-              onClick={async () => {
-                if (!selectedTable) return;
-                try {
-                  const columns = await tauriCommands.getTableColumns(selectedTable);
-                  useEditCellStore.getState().startAddRow(selectedTable, columns);
-                  useLayoutStore.getState().setAsideCollapsed(false);
-                } catch {
-                  // Column fetch failed - button stays enabled for retry
-                }
-              }}
-            >
-              Add row
-            </Button>
+            {viewMode !== 'diagram' && (
+              <Button
+                variant="default"
+                leftSection={<IconPlus size={16} />}
+                disabled={!selectedTable || viewMode !== 'data'}
+                onClick={async () => {
+                  if (!selectedTable) return;
+                  try {
+                    const columns = await tauriCommands.getTableColumns(selectedTable);
+                    useEditCellStore.getState().startAddRow(selectedTable, columns);
+                    useLayoutStore.getState().setAsideCollapsed(false);
+                  } catch {
+                    // Column fetch failed - button stays enabled for retry
+                  }
+                }}
+              >
+                Add row
+              </Button>
+            )}
           </Group>
 
-          <Tooltip withArrow label={queryEditorVisible ? "Hide Query Editor" : "Show Query Editor"}>
-            <ActionIcon
-              variant={queryEditorVisible ? "filled" : "default"}
-              size="lg"
-              onClick={toggleQueryEditor}
-              disabled={!selectedTable}
-            >
-              <IconSql stroke={1.5} />
-            </ActionIcon>
-          </Tooltip>
+          {viewMode !== 'diagram' && (
+            <Tooltip withArrow label={queryEditorVisible ? "Hide Query Editor" : "Show Query Editor"}>
+              <ActionIcon
+                variant={queryEditorVisible ? "filled" : "default"}
+                size="lg"
+                onClick={toggleQueryEditor}
+                disabled={!selectedTable}
+              >
+                <IconSql stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Group>
 
         <ConsoleLog />

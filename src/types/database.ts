@@ -75,3 +75,11 @@ export interface TableColumn {
   characterMaximumLength?: number | null;
   numericPrecision?: number | null;
 }
+
+export interface TableRelationship {
+  fromTable: string;
+  fromColumn: string;
+  toTable: string;
+  toColumn: string;
+  constraintName: string;
+}

@@ -61,6 +61,21 @@ pub struct TableColumn {
     pub numeric_precision: Option<i64>,
 }
 
+/// Represents a foreign key relationship between tables.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TableRelationship {
+    /// Source table name.
+    pub from_table: String,
+    /// Source column name.
+    pub from_column: String,
+    /// Referenced table name.
+    pub to_table: String,
+    /// Referenced column name.
+    pub to_column: String,
+    /// Constraint name.
+    pub constraint_name: String,
+}
+
 pub type DbResult<T> = Result<T, QueryError>;
 
 /// Trait defining the interface for database connections.
@@ -108,6 +123,9 @@ pub trait DatabaseConnection: Send + Sync {
 
     /// Returns column metadata for the specified table.
     async fn get_table_columns(&self, table_name: &str) -> DbResult<Vec<TableColumn>>;
+
+    /// Returns foreign key relationships for all tables in current database.
+    async fn get_table_relationships(&self) -> DbResult<Vec<TableRelationship>>;
 
     /// Closes the database connection and releases resources.
     async fn disconnect(&self) -> DbResult<()>;

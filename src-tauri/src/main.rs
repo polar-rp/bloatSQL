@@ -50,6 +50,7 @@ fn main() {
             commands::change_database,
             commands::get_current_database,
             commands::get_table_columns,
+            commands::get_table_relationships,
             commands::disconnect_from_database,
             commands::export_database,
             commands::update_cell,

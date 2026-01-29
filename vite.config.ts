@@ -46,6 +46,8 @@ export default defineConfig({
           icons: ['@tabler/icons-react'],
           // Virtualization - separate chunk
           virtual: ['@tanstack/react-virtual'],
+          // React Flow diagram library
+          reactflow: ['@xyflow/react', 'd3-hierarchy'],
           // React core
           react: ['react', 'react-dom'],
         },
@@ -62,6 +64,8 @@ export default defineConfig({
       '@tabler/icons-react',
       'zustand',
       '@tanstack/react-virtual',
+      '@xyflow/react',
+      'd3-hierarchy',
     ],
   },
 });

@@ -26,9 +26,7 @@ export function MonacoSqlEditor({
   const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
-  // Setup SQL autocomplete
   const setupSqlAutocomplete = (monaco: Monaco) => {
-    // Register SQL completion provider
     monaco.languages.registerCompletionItemProvider('sql', {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
@@ -242,7 +240,7 @@ export function MonacoSqlEditor({
       theme={colorScheme === 'dark' ? 'vs-dark' : 'light'}
       options={{
         minimap: { enabled: false },
-        fontSize: 13,
+        fontSize: 16,
         fontFamily: 'JetBrains Mono, Consolas, Monaco, "Courier New", monospace',
         lineNumbers: 'on',
         renderLineHighlight: 'all',

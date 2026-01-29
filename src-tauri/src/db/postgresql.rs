@@ -1,6 +1,6 @@
 use super::connection::{
     error_codes, DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn,
-    DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
+    TableRelationship, DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
 };
 use async_trait::async_trait;
 use native_tls::TlsConnector;
@@ -531,6 +531,53 @@ impl DatabaseConnection for PostgresConnection {
             .collect();
 
         Ok(columns)
+    }
+
+    async fn get_table_relationships(&self) -> DbResult<Vec<TableRelationship>> {
+        let client = self.client.lock().await;
+
+        let query = "SELECT
+                        tc.table_name AS from_table,
+                        kcu.column_name AS from_column,
+                        ccu.table_name AS to_table,
+                        ccu.column_name AS to_column,
+                        tc.constraint_name
+                     FROM information_schema.table_constraints tc
+                     JOIN information_schema.key_column_usage kcu
+                        ON tc.constraint_name = kcu.constraint_name
+                        AND tc.table_schema = kcu.table_schema
+                     JOIN information_schema.constraint_column_usage ccu
+                        ON ccu.constraint_name = tc.constraint_name
+                        AND ccu.table_schema = tc.table_schema
+                     WHERE tc.constraint_type = 'FOREIGN KEY'
+                        AND tc.table_schema = 'public'
+                     ORDER BY tc.table_name";
+
+        let rows = timeout(DEFAULT_QUERY_TIMEOUT, client.query(query, &[]))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
+
+        let relationships: Vec<TableRelationship> = rows
+            .iter()
+            .filter_map(|row| {
+                Some(TableRelationship {
+                    from_table: row.try_get::<_, String>(0).ok()?,
+                    from_column: row.try_get::<_, String>(1).ok()?,
+                    to_table: row.try_get::<_, String>(2).ok()?,
+                    to_column: row.try_get::<_, String>(3).ok()?,
+                    constraint_name: row.try_get::<_, String>(4).ok()?,
+                })
+            })
+            .collect();
+
+        Ok(relationships)
     }
 
     async fn disconnect(&self) -> DbResult<()> {

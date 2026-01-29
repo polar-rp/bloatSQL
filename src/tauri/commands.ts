@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Connection, QueryResult, ExportOptions, TableColumn } from '../types/database';
+import { Connection, QueryResult, ExportOptions, TableColumn, TableRelationship } from '../types/database';
 
 interface BackendConnection {
   id: string;
@@ -33,6 +33,14 @@ interface BackendTableColumn {
   numeric_precision?: number | null;
 }
 
+interface BackendTableRelationship {
+  from_table: string;
+  from_column: string;
+  to_table: string;
+  to_column: string;
+  constraint_name: string;
+}
+
 function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
   return {
     name: col.name,
@@ -42,6 +50,16 @@ function toFrontendTableColumn(col: BackendTableColumn): TableColumn {
     columnDefault: col.column_default,
     characterMaximumLength: col.character_maximum_length,
     numericPrecision: col.numeric_precision,
+  };
+}
+
+function toFrontendTableRelationship(rel: BackendTableRelationship): TableRelationship {
+  return {
+    fromTable: rel.from_table,
+    fromColumn: rel.from_column,
+    toTable: rel.to_table,
+    toColumn: rel.to_column,
+    constraintName: rel.constraint_name,
   };
 }
 
@@ -136,6 +154,11 @@ export const tauriCommands = {
   async getTableColumns(tableName: string): Promise<TableColumn[]> {
     const rawColumns = await invoke<BackendTableColumn[]>('get_table_columns', { tableName });
     return rawColumns.map(toFrontendTableColumn);
+  },
+
+  async getTableRelationships(): Promise<TableRelationship[]> {
+    const rawRelationships = await invoke<BackendTableRelationship[]>('get_table_relationships');
+    return rawRelationships.map(toFrontendTableRelationship);
   },
 
   async exportDatabase(options: ExportOptions): Promise<void> {

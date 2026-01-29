@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Box, Stack } from '@mantine/core';
+import { Box, Stack, Center, Text } from '@mantine/core';
 import { QueryResult } from '../../types/database';
 import { QueryEditorCard } from './QueryEditorCard';
 import { ResultsCard } from './ResultsCard';
 import { TableStructureView } from './TableStructureView';
+import { DiagramWorkspace } from '../DiagramWorkspace';
 import { useViewMode, useQueryEditorVisible } from '../../stores/tableViewStore';
 import styles from './QueryWorkspace.module.css';
 
@@ -68,8 +69,10 @@ export function QueryWorkspace({
               onOpenExportModal={onOpenExportModal}
             />
         )
-      ) : (
+      ) : viewMode === 'structure' ? (
         <TableStructureView />
+      ) : (
+        <DiagramWorkspace />
       )}
     </Box>
   );

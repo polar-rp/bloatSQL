@@ -1,6 +1,6 @@
 use super::connection::{
     error_codes, DatabaseConnection, DbResult, QueryError, QueryResult, TableColumn,
-    DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
+    TableRelationship, DEFAULT_QUERY_TIMEOUT, MAX_QUERY_ROWS,
 };
 use async_trait::async_trait;
 use mysql_async::{prelude::*, Opts, OptsBuilder, Pool, PoolConstraints, PoolOpts, Value};
@@ -484,6 +484,65 @@ impl DatabaseConnection for MariaDbConnection {
         }
 
         Ok(columns)
+    }
+
+    async fn get_table_relationships(&self) -> DbResult<Vec<TableRelationship>> {
+        let mut conn = self.get_conn().await?;
+
+        let db_name: String = conn
+            .query_first("SELECT DATABASE()")
+            .await
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?
+            .unwrap_or_default();
+
+        let query = "SELECT
+                        kcu.TABLE_NAME,
+                        kcu.COLUMN_NAME,
+                        kcu.REFERENCED_TABLE_NAME,
+                        kcu.REFERENCED_COLUMN_NAME,
+                        kcu.CONSTRAINT_NAME
+                     FROM information_schema.KEY_COLUMN_USAGE kcu
+                     WHERE kcu.TABLE_SCHEMA = ?
+                        AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
+                     ORDER BY kcu.TABLE_NAME, kcu.ORDINAL_POSITION";
+
+        let result = timeout(DEFAULT_QUERY_TIMEOUT, conn.exec_iter(query, (&db_name,)))
+            .await
+            .map_err(|_| QueryError {
+                message: "Query timed out".to_string(),
+                code: Some(error_codes::TIMEOUT_ERROR.to_string()),
+            })?
+            .map_err(|e| QueryError {
+                message: e.to_string(),
+                code: Some(error_codes::QUERY_ERROR.to_string()),
+            })?;
+
+        let mut relationships: Vec<TableRelationship> = Vec::new();
+        let mut result = result;
+
+        while let Some(row) = result.next().await.map_err(|e| QueryError {
+            message: e.to_string(),
+            code: Some(error_codes::QUERY_ERROR.to_string()),
+        })? {
+            let from_table: String = row.get(0).unwrap_or_default();
+            let from_column: String = row.get(1).unwrap_or_default();
+            let to_table: String = row.get(2).unwrap_or_default();
+            let to_column: String = row.get(3).unwrap_or_default();
+            let constraint_name: String = row.get(4).unwrap_or_default();
+
+            relationships.push(TableRelationship {
+                from_table,
+                from_column,
+                to_table,
+                to_column,
+                constraint_name,
+            });
+        }
+
+        Ok(relationships)
     }
 
     async fn disconnect(&self) -> DbResult<()> {
