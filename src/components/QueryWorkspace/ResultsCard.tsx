@@ -72,6 +72,15 @@ export function ResultsCard({
     loadTableColumns();
   }, [loadedTable]);
 
+  const getRowKey = (row: Record<string, unknown>, rowIndex: number): string => {
+    const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
+    if (primaryKeyColumn?.name && row[primaryKeyColumn.name] !== undefined) {
+      return String(row[primaryKeyColumn.name]);
+    }
+    // Fallback: unikalna kombinacja wartości
+    return `${rowIndex}-${JSON.stringify(row)}`;
+  };
+
   const handleCellClick = (rowIndex: number, columnName: string) => {
     const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
     const row = rows[rowIndex];
@@ -161,7 +170,7 @@ export function ResultsCard({
             <Table.Tbody>
               {rows.map((row, rowIndex) => (
                 <Table.Tr
-                  key={rowIndex}
+                  key={getRowKey(row, rowIndex)}
                   onContextMenu={(e) => handleContextMenu(e, rowIndex)}
                 >
                   {columns.map((col) => {
