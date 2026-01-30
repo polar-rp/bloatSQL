@@ -338,6 +338,9 @@ pub struct UpdateCellResult {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<UpdateCellError>,
+    /// The SQL query that was executed (only present on success).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executed_query: Option<String>,
 }
 
 /// Detailed error information for cell update failures.
@@ -392,7 +395,7 @@ pub async fn update_cell(
                 )
                 .await
             {
-                Ok(()) => {
+                Ok(executed_query) => {
                     debug!(
                         "Successfully updated cell in {}.{} where {} = {} to {:?}",
                         request.table_name,
@@ -404,6 +407,7 @@ pub async fn update_cell(
                     Ok(UpdateCellResult {
                         success: true,
                         error: None,
+                        executed_query: Some(executed_query),
                     })
                 }
                 Err(e) => {
@@ -426,6 +430,7 @@ pub async fn update_cell(
                             table: request.table_name,
                             column: request.column_name,
                         }),
+                        executed_query: None,
                     })
                 }
             }
@@ -442,6 +447,7 @@ pub async fn update_cell(
                     table: request.table_name,
                     column: request.column_name,
                 }),
+                executed_query: None,
             })
         }
     }

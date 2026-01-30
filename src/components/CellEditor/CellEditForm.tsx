@@ -24,6 +24,7 @@ import {
 } from '../../stores/editCellStore';
 import { tauriCommands } from '../../tauri/commands';
 import { useQueryStore } from '../../stores/queryStore';
+import { useConsoleLogStore } from '../../stores/consoleLogStore';
 
 function formatValue(value: unknown): string {
   if (value === null) return '';
@@ -124,7 +125,12 @@ export function CellEditForm() {
 
         console.log('Updating cell:', updateRequest);
 
-        await tauriCommands.updateCell(updateRequest);
+        const result = await tauriCommands.updateCell(updateRequest);
+
+        // Log the executed SQL query to console
+        if (result.executedQuery) {
+          useConsoleLogStore.getState().addLog(result.executedQuery);
+        }
       }
 
       await useQueryStore.getState().refreshTable();

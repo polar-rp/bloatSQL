@@ -590,8 +590,31 @@ impl DatabaseConnection for MariaDbConnection {
         new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
-    ) -> DbResult<()> {
+    ) -> DbResult<String> {
         let mut conn = self.get_conn().await?;
+
+        // Build the logged query with actual values for display purposes
+        let logged_query = match new_value {
+            Some(value) => {
+                format!(
+                    "UPDATE `{}` SET `{}` = '{}' WHERE `{}` = '{}'",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_string(value),
+                    Self::escape_identifier(primary_key_column),
+                    Self::escape_string(primary_key_value)
+                )
+            }
+            None => {
+                format!(
+                    "UPDATE `{}` SET `{}` = NULL WHERE `{}` = '{}'",
+                    Self::escape_identifier(table_name),
+                    Self::escape_identifier(column_name),
+                    Self::escape_identifier(primary_key_column),
+                    Self::escape_string(primary_key_value)
+                )
+            }
+        };
 
         // Handle NULL and non-NULL cases separately to avoid type serialization issues
         match new_value {
@@ -645,7 +668,7 @@ impl DatabaseConnection for MariaDbConnection {
             }
         }
 
-        Ok(())
+        Ok(logged_query)
     }
 
     async fn export_database_with_options(

@@ -56,6 +56,7 @@ import {
 import { ConnectionModal } from "./components/ConnectionManager";
 import { ExportModal } from "./components/modals";
 import { tauriCommands } from "./tauri/commands";
+import { useNavigationHistory } from "./hooks/useNavigationHistory";
 
 function App() {
   const connections = useConnections();
@@ -94,6 +95,17 @@ function App() {
   const clearSuccess = useClearExportSuccess();
 
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+
+  // Navigation history for tables
+  const navigationHistory = useNavigationHistory<string>(
+    (tableName) => {
+      // When navigating back/forward, update the selected table
+      setSelectedTable(tableName);
+      setTableViewSelected(tableName);
+      selectTable(tableName);
+    },
+    (a, b) => a === b
+  );
 
   const [
     connectionFormOpened,
@@ -264,8 +276,10 @@ function App() {
       setSelectedTable(tableName);
       setTableViewSelected(tableName);
       selectTable(tableName);
+      // Add to navigation history
+      navigationHistory.push(tableName);
     },
-    [selectTable, setTableViewSelected],
+    [selectTable, setTableViewSelected, navigationHistory],
   );
 
 
@@ -333,6 +347,8 @@ function App() {
           />
         }
         aside={<Aside />}
+        onNavigateBack={navigationHistory.canGoBack ? navigationHistory.goBack : undefined}
+        onNavigateForward={navigationHistory.canGoForward ? navigationHistory.goForward : undefined}
       >
         <MainContent
           queryText={queryText}

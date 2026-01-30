@@ -105,6 +105,7 @@ export interface UpdateCellError {
 export interface UpdateCellResult {
   success: boolean;
   error?: UpdateCellError;
+  executedQuery?: string;
 }
 
 /**

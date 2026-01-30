@@ -182,7 +182,7 @@ export const tauriCommands = {
     return invoke<number>('ping_connection');
   },
 
-  async updateCell(params: UpdateCellRequest): Promise<void> {
+  async updateCell(params: UpdateCellRequest): Promise<UpdateCellResult> {
     const request = {
       table_name: params.tableName,
       column_name: params.columnName,
@@ -204,6 +204,7 @@ export const tauriCommands = {
         table: string;
         column: string;
       };
+      executed_query?: string;
     }
 
     const result = await invoke<BackendUpdateCellResult>('update_cell', { request });
@@ -215,6 +216,11 @@ export const tauriCommands = {
     }
 
     console.log('update_cell success');
+    return {
+      success: result.success,
+      error: result.error,
+      executedQuery: result.executed_query,
+    };
   },
 };
 

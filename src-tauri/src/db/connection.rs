@@ -198,6 +198,9 @@ pub trait DatabaseConnection: Send + Sync {
     /// * `primary_key_column` - Name of the primary key column
     /// * `primary_key_value` - Value of the primary key
     ///
+    /// # Returns
+    /// Returns the executed SQL query string for logging purposes.
+    ///
     /// # Security
     /// This method uses parameterized queries to prevent SQL injection.
     async fn update_cell(
@@ -207,5 +210,5 @@ pub trait DatabaseConnection: Send + Sync {
         new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
-    ) -> DbResult<()>;
+    ) -> DbResult<String>;
 }

@@ -653,7 +653,7 @@ impl DatabaseConnection for PostgresConnection {
         new_value: Option<&str>,
         primary_key_column: &str,
         primary_key_value: &str,
-    ) -> DbResult<()> {
+    ) -> DbResult<String> {
         let client = self.client.lock().await;
 
         // Build UPDATE query with proper escaping
@@ -691,7 +691,7 @@ impl DatabaseConnection for PostgresConnection {
             })?
             .map_err(|e| pg_error_to_query_error(e, error_codes::QUERY_ERROR))?;
 
-        Ok(())
+        Ok(query)
     }
 
     async fn export_database_with_options(

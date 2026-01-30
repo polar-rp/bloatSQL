@@ -45,7 +45,7 @@ export function Toolbar({
       </Group>
 
       {(toolbarContent || selectedTable) && (
-        <Box style={{ flex: 1, textAlign: "center" }}>
+        <Box flex={1} ta={'center'}>
           {toolbarContent ?? (
             <Text size="sm" fw={500}>
               {selectedTable}
