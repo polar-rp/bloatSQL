@@ -7,7 +7,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   const err = error as Error;
   return (
     <Center h="100vh" p="xl">
-      <Paper p="xl" radius="md" withBorder shadow="md" maw={600}>
+      <Paper p="xl" withBorder shadow="md" maw={600}>
         <Stack align="center" gap="lg">
           <IconAlertTriangle size={64} color="var(--mantine-color-red-6)" />
           <Title order={2}>Something went wrong</Title>

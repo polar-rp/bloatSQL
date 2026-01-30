@@ -44,10 +44,8 @@ export default defineConfig({
           ],
           // Icons - large and stable
           icons: ['@tabler/icons-react'],
-          // Virtualization - separate chunk
-          virtual: ['@tanstack/react-virtual'],
           // React Flow diagram library
-          reactflow: ['@xyflow/react', 'd3-hierarchy'],
+          reactflow: ['@xyflow/react'],
           // React core
           react: ['react', 'react-dom'],
         },
@@ -63,9 +61,7 @@ export default defineConfig({
       '@mantine/hooks',
       '@tabler/icons-react',
       'zustand',
-      '@tanstack/react-virtual',
       '@xyflow/react',
-      'd3-hierarchy',
     ],
   },
 });

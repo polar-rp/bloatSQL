@@ -5,7 +5,6 @@ import type { Node, Edge } from '@xyflow/react';
 interface DiagramState {
   nodes: Node[];
   edges: Edge[];
-  selectedTables: string[];
   showColumnTypes: boolean;
   showOnlyKeys: boolean;
   isLoading: boolean;
@@ -15,9 +14,6 @@ interface DiagramState {
 interface DiagramActions {
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
-  updateNodePositions: (nodes: Node[]) => void;
-  setSelectedTables: (tables: string[]) => void;
-  toggleTable: (tableName: string) => void;
   toggleColumnTypes: () => void;
   toggleOnlyKeys: () => void;
   setLoading: (loading: boolean) => void;
@@ -32,7 +28,6 @@ export const useDiagramStore = create<DiagramStore>()(
     (set) => ({
       nodes: [],
       edges: [],
-      selectedTables: [],
       showColumnTypes: true,
       showOnlyKeys: false,
       isLoading: false,
@@ -40,14 +35,6 @@ export const useDiagramStore = create<DiagramStore>()(
 
       setNodes: (nodes) => set({ nodes }),
       setEdges: (edges) => set({ edges }),
-      updateNodePositions: (nodes) => set({ nodes }),
-      setSelectedTables: (tables) => set({ selectedTables: tables }),
-      toggleTable: (tableName) =>
-        set((state) => ({
-          selectedTables: state.selectedTables.includes(tableName)
-            ? state.selectedTables.filter((t) => t !== tableName)
-            : [...state.selectedTables, tableName],
-        })),
       toggleColumnTypes: () =>
         set((state) => ({ showColumnTypes: !state.showColumnTypes })),
       toggleOnlyKeys: () =>
@@ -58,7 +45,6 @@ export const useDiagramStore = create<DiagramStore>()(
         set({
           nodes: [],
           edges: [],
-          selectedTables: [],
           error: null,
         }),
     }),
@@ -71,11 +57,3 @@ export const useDiagramStore = create<DiagramStore>()(
     }
   )
 );
-
-// Selectors
-export const useDiagramNodes = () => useDiagramStore((s) => s.nodes);
-export const useDiagramEdges = () => useDiagramStore((s) => s.edges);
-export const useDiagramLoading = () => useDiagramStore((s) => s.isLoading);
-export const useDiagramError = () => useDiagramStore((s) => s.error);
-export const useShowColumnTypes = () => useDiagramStore((s) => s.showColumnTypes);
-export const useShowOnlyKeys = () => useDiagramStore((s) => s.showOnlyKeys);

@@ -12,7 +12,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^2.0.3",
     "@gfazioli/mantine-led": "^1.0.1",
     "@mantine/core": "^8.3.12",
     "@mantine/form": "^8.3.12",
@@ -20,14 +19,11 @@
     "@mantine/notifications": "^8.3.12",
     "@monaco-editor/react": "^4.7.0",
     "@tabler/icons-react": "^3.0.0",
-    "@tanstack/react-virtual": "^3.13.0",
     "@tauri-apps/api": "^2.9.1",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-os": "^2.3.1",
     "@xyflow/react": "^12.10.0",
-    "clsx": "^2.1.1",
-    "d3": "^7.9.0",
-    "elkjs": "^0.11.0",
+    "d3-force": "^3.0.0",
     "monaco-editor": "^0.52.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -36,7 +32,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.6",
-    "@types/d3-hierarchy": "^3.1.7",
+    "@types/d3-force": "^3.0.0",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
