@@ -13,6 +13,7 @@ interface StructureTableProps {
   columns: DisplayColumn[];
   isEditing?: boolean;
   pendingOperations?: AlterColumnOperation[];
+  editingColumnName?: string | null;
   onColumnClick?: (column: DisplayColumn) => void;
   onDropColumn?: (columnName: string) => void;
 }
@@ -40,6 +41,7 @@ export function StructureTable({
   columns,
   isEditing = false,
   pendingOperations = [],
+  editingColumnName = null,
   onColumnClick,
   onDropColumn,
 }: StructureTableProps) {
@@ -75,11 +77,13 @@ export function StructureTable({
             const isDropped = pendingOperations.some(
               (op) => op.type === 'DROP_COLUMN' && op.columnName === col.name
             );
+            const isEditingThisRow = editingColumnName === col.name;
 
             return (
               <Table.Tr
                 key={col.name}
                 onClick={onColumnClick && !isDropped ? () => onColumnClick(col) : undefined}
+                className={isEditingThisRow ? styles.rowEditing : undefined}
                 style={{
                   cursor: onColumnClick && isEditing && !isDropped ? 'pointer' : undefined,
                   backgroundColor: rowBg,

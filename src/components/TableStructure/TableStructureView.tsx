@@ -6,11 +6,11 @@ import {
   useStructureEditStore,
   useIsEditingStructure,
   usePendingOperations,
+  useEditingColumnDraft,
 } from '../../stores/structureEditStore';
-import { DisplayColumn, ColumnDefinition } from '../../types/tableStructure';
+import { DisplayColumn } from '../../types/tableStructure';
 import { useTableStructure } from './hooks/useTableStructure';
 import { StructureTable } from './components/StructureTable';
-import { ColumnEditModal } from './components/ColumnEditModal';
 import { DropColumnConfirmModal } from './components/DropColumnConfirmModal';
 
 export function TableStructureView() {
@@ -21,24 +21,24 @@ export function TableStructureView() {
   // Store state
   const isEditing = useIsEditingStructure();
   const pendingOperations = usePendingOperations();
+  const editingColumn = useEditingColumnDraft();
 
   const {
-    modifyColumn,
     dropColumn,
+    startEditingColumnInAside,
   } = useStructureEditStore();
 
-  // Local state for modals
-  const [editingColumn, setEditingColumn] = useState<DisplayColumn | null>(null);
+  // Local state for drop confirmation modal
   const [droppingColumn, setDroppingColumn] = useState<string | null>(null);
 
   // Handlers
   const handleColumnClick = useCallback(
     (column: DisplayColumn) => {
       if (isEditing) {
-        setEditingColumn(column);
+        startEditingColumnInAside(column);
       }
     },
-    [isEditing]
+    [isEditing, startEditingColumnInAside]
   );
 
   const handleDropColumnRequest = useCallback((columnName: string) => {
@@ -51,17 +51,6 @@ export function TableStructureView() {
       setDroppingColumn(null);
     }
   }, [droppingColumn, dropColumn]);
-
-  const handleSaveColumn = useCallback(
-    (definition: ColumnDefinition, originalName?: string) => {
-      if (originalName) {
-        // Editing existing column
-        modifyColumn(originalName, definition);
-      }
-      setEditingColumn(null);
-    },
-    [modifyColumn]
-  );
 
   if (!selectedTable) {
     return (
@@ -103,19 +92,11 @@ export function TableStructureView() {
           columns={columns}
           isEditing={isEditing}
           pendingOperations={pendingOperations}
+          editingColumnName={editingColumn?.name ?? null}
           onColumnClick={handleColumnClick}
           onDropColumn={handleDropColumnRequest}
         />
       )}
-
-      {/* Edit Column Modal */}
-      <ColumnEditModal
-        opened={editingColumn !== null}
-        onClose={() => setEditingColumn(null)}
-        mode="edit"
-        column={editingColumn}
-        onSave={handleSaveColumn}
-      />
 
       {/* Drop Column Confirm Modal */}
       <DropColumnConfirmModal

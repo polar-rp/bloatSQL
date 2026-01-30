@@ -5,3 +5,8 @@
 .tableContainer {
     max-height: calc(100vh - 200px);
 }
+
+.rowEditing {
+    outline: 2px dashed var(--mantine-primary-color-filled);
+    outline-offset: -2px;
+}

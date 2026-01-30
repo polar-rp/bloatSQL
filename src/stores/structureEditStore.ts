@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { DisplayColumn, AlterColumnOperation, ColumnDefinition } from '../types/tableStructure';
+import { useLayoutStore } from './layoutStore';
 
 interface StructureEditState {
   tableName: string | null;
@@ -7,6 +8,8 @@ interface StructureEditState {
   pendingOperations: AlterColumnOperation[];
   selectedColumn: DisplayColumn | null;
   isEditingColumn: boolean;
+  editingColumnDraft: DisplayColumn | null; // Column being edited in Aside
+  isAddingNewColumn: boolean; // Whether we're adding a new column in Aside
   isApplying: boolean;
   error: string | null;
 }
@@ -16,6 +19,9 @@ interface StructureEditActions {
   stopEditing: () => void;
   selectColumn: (column: DisplayColumn) => void;
   clearColumnSelection: () => void;
+  startEditingColumnInAside: (column: DisplayColumn) => void;
+  startAddingColumnInAside: () => void;
+  clearColumnDraft: () => void;
   addColumn: (definition: ColumnDefinition) => void;
   modifyColumn: (columnName: string, newDefinition: ColumnDefinition) => void;
   dropColumn: (columnName: string) => void;
@@ -35,6 +41,8 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
   pendingOperations: [],
   selectedColumn: null,
   isEditingColumn: false,
+  editingColumnDraft: null,
+  isAddingNewColumn: false,
   isApplying: false,
   error: null,
 
@@ -45,6 +53,8 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
       pendingOperations: [],
       selectedColumn: null,
       isEditingColumn: true,
+      editingColumnDraft: null,
+      isAddingNewColumn: false,
       error: null,
     });
   },
@@ -56,6 +66,8 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
       pendingOperations: [],
       selectedColumn: null,
       isEditingColumn: false,
+      editingColumnDraft: null,
+      isAddingNewColumn: false,
       error: null,
     });
   },
@@ -66,6 +78,20 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
 
   clearColumnSelection: () => {
     set({ selectedColumn: null });
+  },
+
+  startEditingColumnInAside: (column) => {
+    set({ editingColumnDraft: column, isAddingNewColumn: false });
+    useLayoutStore.getState().setAsideCollapsed(false);
+  },
+
+  startAddingColumnInAside: () => {
+    set({ editingColumnDraft: null, isAddingNewColumn: true });
+    useLayoutStore.getState().setAsideCollapsed(false);
+  },
+
+  clearColumnDraft: () => {
+    set({ editingColumnDraft: null, isAddingNewColumn: false });
   },
 
   addColumn: (definition) => {
@@ -171,3 +197,9 @@ export const useOriginalColumns = () =>
 
 export const useRemoveOperationByIndex = () =>
   useStructureEditStore((s) => s.removeOperationByIndex);
+
+export const useEditingColumnDraft = () =>
+  useStructureEditStore((s) => s.editingColumnDraft);
+
+export const useIsAddingNewColumn = () =>
+  useStructureEditStore((s) => s.isAddingNewColumn);
