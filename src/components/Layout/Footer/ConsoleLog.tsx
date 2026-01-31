@@ -17,7 +17,7 @@ function ConsoleLogComponent() {
         {logs.length === 0 ? (
           <Center h={239}>
             <Stack gap="xs" align="center">
-              <ThemeIcon variant="transparent" color="gray" size="xl">
+              <ThemeIcon variant="light"  size="xl">
                 <IconTerminal2 stroke={1.5} size={32} />
               </ThemeIcon>
               <Box ta="center">

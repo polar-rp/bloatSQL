@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
-import { Box, Group, Text, UnstyledButton } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { Box, Group, Text, Tooltip, UnstyledButton, Kbd } from "@mantine/core";
+import { IconArrowNarrowLeft, IconArrowNarrowRight } from "@tabler/icons-react";
 import { useSelectedTable } from "../../../stores/tableViewStore";
 import classes from "./Toolbar.module.css";
 
@@ -27,21 +27,48 @@ export function Toolbar({
       }}
     >
       <Group gap={0} >
-        <UnstyledButton
-          onClick={onNavigateBack}
-          disabled={!onNavigateBack}
-          className={classes.toolbarButton}
+        <Tooltip
+          ta={'center'}
+          label={
+            <>
+              Back 
+              <br />
+              <Kbd>Alt</Kbd> <Kbd>←</Kbd>
+            </>
+          }
+          withArrow
+          arrowPosition="side"
+          multiline
         >
-          <IconChevronLeft size={16} />
-        </UnstyledButton>
-
-        <UnstyledButton
-          onClick={onNavigateForward}
-          disabled={!onNavigateForward}
-          className={classes.toolbarButton}
-        >
-          <IconChevronRight size={16} />
-        </UnstyledButton>
+          <UnstyledButton
+            onClick={onNavigateBack}
+            disabled={!onNavigateBack}
+            className={classes.toolbarButton}
+          >
+            <IconArrowNarrowLeft size={20} />
+          </UnstyledButton>
+        </Tooltip>
+        
+        <Tooltip
+            ta={'center'}
+            label={
+              <>
+                Next
+                <br />
+                <Kbd>Alt</Kbd> <Kbd>→</Kbd>
+              </>
+            }
+            withArrow
+            multiline
+          >
+          <UnstyledButton
+            onClick={onNavigateForward}
+            disabled={!onNavigateForward}
+            className={classes.toolbarButton}
+          >
+            <IconArrowNarrowRight size={20} />
+          </UnstyledButton>
+        </Tooltip>
       </Group>
 
       {(toolbarContent || selectedTable) && (

@@ -1,10 +1,11 @@
 import { memo, useState } from 'react';
-import { Stack, Center, Loader, AppShell, Button, Text, ActionIcon, Group, Card, ScrollArea, TextInput, SegmentedControl, Code, Badge, rem } from '@mantine/core';
+import { Stack, Center, Loader, AppShell, Button, Text, Box, ActionIcon, Group, Card, ScrollArea, TextInput, SegmentedControl, Code, Badge, rem, Paper } from '@mantine/core';
 import { IconPlus, IconDatabase, IconEdit, IconTrash, IconPlug, IconSearch, IconTable, IconHistory } from '@tabler/icons-react';
 import { Connection } from '../../../types/database';
 import { DatabaseTree } from './DatabaseTree';
 import { DatabaseSelector } from './DatabaseSelector';
 import { HistoryItem } from '../Aside';
+import styles from "./Navbar.module.css";
 
 interface NavbarProps {
   connections: Connection[];
@@ -65,6 +66,7 @@ function NavbarComponent({
   }
 
   const isConnected = !!activeConnection;
+  const bubbles = Array.from({ length: 8 });
 
   return (
     <>
@@ -261,6 +263,37 @@ function NavbarComponent({
             )}
           </Stack>
         )}
+      </AppShell.Section>
+      <AppShell.Section>
+        <Paper
+          withBorder
+          p="sm"
+          component={Group}
+          gap="xs"
+          pos="relative"
+          style={{ overflow: 'hidden' }}
+        >
+          {bubbles.map((_, i) => (
+            <Box
+              key={i}
+              className={styles.bubble}
+              style={{
+                '--x': `${Math.random() * 100}%`,
+                '--size': `${8 + Math.random() * 16}px`,
+                '--duration': `${3 + Math.random() * 4}s`,
+                '--delay': `${Math.random() * 3}s`,
+                '--drift': `${(Math.random() - 0.5) * 40}px`,
+              } as React.CSSProperties}
+            />
+          ))}
+
+          <Box flex={1} style={{ zIndex: 1 }}>
+            <Text fw={500} lh={1.3}>Keep It Alive</Text>
+            <Text size="xs" c="dimmed">Help BloatSQL keep swimming.</Text>
+          </Box>
+
+          <Button style={{ zIndex: 1 }}>Donate</Button>
+        </Paper>
       </AppShell.Section>
     </>
   );

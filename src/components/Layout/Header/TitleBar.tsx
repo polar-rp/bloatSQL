@@ -64,7 +64,7 @@ function TitleBarComponent({
         className={classes.titleBar}
       >
         {/* Left section: Logo + Menu */}
-        <Group h="100%" px="md" gap="xs" wrap="nowrap">
+        <Group h="100%" px={'xs'} gap={6} wrap="nowrap">
           <Image src={appIcon} w={18} h={18} />
 
           <Menu shadow="md" width={200} position="bottom-start" trigger="hover">
@@ -73,6 +73,7 @@ function TitleBarComponent({
                 variant="subtle"
                 color='var(--mantine-color-text)'
                 size="compact-xs"
+                fw={450}
               >
                 File
               </Button>
@@ -93,11 +94,12 @@ function TitleBarComponent({
                 variant="subtle"
                 color='var(--mantine-color-text)'
                 size="compact-xs"
+                fw={450}
               >
                 Database
               </Button>
             </Menu.Target>
-            <Menu.Dropdown>
+            <Menu.Dropdown >
               <Menu.Item
                 leftSection={<IconPlayerPlay size={14} />}
                 onClick={onExecuteQuery}

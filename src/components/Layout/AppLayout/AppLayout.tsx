@@ -32,12 +32,12 @@ function AppLayoutComponent({
             <AppShell
                 header={{ height: 32 }}
                 navbar={{
-                    width: 300,
+                    width: 320,
                     breakpoint: "sm",
                     collapsed: { mobile: navbarCollapsed, desktop: navbarCollapsed },
                 }}
                 aside={{
-                    width: 300,
+                    width: 320,
                     breakpoint: "md",
                     collapsed: { mobile: asideCollapsed, desktop: asideCollapsed },
                 }}

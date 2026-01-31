@@ -17,7 +17,7 @@ function EmptyState() {
 <AppShell.Section grow>
       <Center h="100%">
         <Stack gap="xs" align="center">
-          <ThemeIcon variant="light" size={50} color="gray">
+          <ThemeIcon variant="light" size={50} >
             <IconEditCircle size={30} stroke={1.5} />
           </ThemeIcon>
           <Stack gap={4} align="center">

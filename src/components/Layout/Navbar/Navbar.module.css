@@ -1,0 +1,45 @@
+.bubble {
+  position: absolute;
+  bottom: -30px;
+  left: var(--x);
+
+  width: var(--size);
+  height: var(--size);
+
+  border-radius: 50%;
+  pointer-events: none;
+
+  background: var(--mantine-primary-color-filled);
+
+  filter: blur(0.5px);
+  opacity: 0;
+
+  animation:
+    rise var(--duration) ease-in infinite,
+    sway 2s ease-in-out infinite alternate;
+
+  animation-delay: var(--delay);
+}
+
+@keyframes rise {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: light-dark(0.2, 0.6);
+  }
+  100% {
+    transform: translateY(-140px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes sway {
+  from {
+    margin-left: 0;
+  }
+  to {
+    margin-left: var(--drift);
+  }
+}
