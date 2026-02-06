@@ -63,7 +63,6 @@ function TitleBarComponent({
         wrap="nowrap"
         className={classes.titleBar}
       >
-        {/* Left section: Logo + Menu */}
         <Group h="100%" px={'xs'} gap={6} wrap="nowrap">
           <Image src={appIcon} w={18} h={18} />
 
@@ -118,7 +117,6 @@ function TitleBarComponent({
           </Menu>
         </Group>
 
-        {/* Center section: Connection status */}
         <Group
           data-tauri-drag-region
           flex={1}

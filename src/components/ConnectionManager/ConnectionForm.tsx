@@ -7,9 +7,7 @@ import {
   Button,
   Group,
   Alert,
-  Card,
   Divider,
-  Text,
   Fieldset,
   ActionIcon,
   Flex,
@@ -158,7 +156,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     }
   };
 
-  // Check if all required fields are filled
   const isFormComplete =
     form.values.name.trim() !== '' &&
     form.values.host.trim() !== '' &&
@@ -167,7 +164,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
     form.values.port > 0 &&
     form.values.port <= 65535;
 
-  // Button should be disabled if form is not dirty (unchanged) or incomplete
   const isSaveDisabled = !form.isDirty() || !isFormComplete;
 
   return (
@@ -188,7 +184,6 @@ export function ConnectionForm({ connection, onSuccess }: ConnectionFormProps) {
         <Alert color="green">Connection successful!</Alert>
       )}
 
-      {/* Import Card */}
        <Fieldset legend="Import from URL" >
           <Group gap="xs" align="flex-start">
             <TextInput

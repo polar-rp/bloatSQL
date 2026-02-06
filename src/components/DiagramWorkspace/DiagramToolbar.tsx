@@ -13,19 +13,16 @@ interface DiagramToolbarProps {
   onResetLayout: () => void;
 }
 
-// Define fitView options OUTSIDE the component to prevent re-renders
 const FIT_VIEW_OPTIONS = { padding: 0.2 };
 
 function DiagramToolbarComponent({ onResetLayout }: DiagramToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
-  // Use individual selectors to avoid unnecessary re-renders
   const showColumnTypes = useDiagramStore((s) => s.showColumnTypes);
   const showOnlyKeys = useDiagramStore((s) => s.showOnlyKeys);
   const toggleColumnTypes = useDiagramStore((s) => s.toggleColumnTypes);
   const toggleOnlyKeys = useDiagramStore((s) => s.toggleOnlyKeys);
 
-  // Memoize all event handlers to prevent unnecessary re-renders
   const handleZoomIn = useCallback(() => {
     zoomIn();
   }, [zoomIn]);

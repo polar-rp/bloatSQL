@@ -1,6 +1,6 @@
 import { Table, ActionIcon, Tooltip } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
-import { DisplayColumn, AlterColumnOperation } from '../../../types/tableStructure';
+import { DisplayColumn, AlterColumnOperation, ColumnDefinition } from '../../../types/tableStructure';
 import { ColumnNameCell } from './ColumnNameCell';
 import { DataTypeCell } from './DataTypeCell';
 import { LengthCell } from './LengthCell';
@@ -14,6 +14,7 @@ interface StructureTableProps {
   isEditing?: boolean;
   pendingOperations?: AlterColumnOperation[];
   editingColumnName?: string | null;
+  draftColumnPreview?: ColumnDefinition | null;
   onColumnClick?: (column: DisplayColumn) => void;
   onDropColumn?: (columnName: string) => void;
 }
@@ -42,10 +43,10 @@ export function StructureTable({
   isEditing = false,
   pendingOperations = [],
   editingColumnName = null,
+  draftColumnPreview = null,
   onColumnClick,
   onDropColumn,
 }: StructureTableProps) {
-  // Check if a column has a pending ADD operation (for new columns in preview)
   const addedColumns = pendingOperations
     .filter((op) => op.type === 'ADD_COLUMN' && op.newDefinition)
     .map((op) => op.newDefinition!);
@@ -132,7 +133,33 @@ export function StructureTable({
             );
           })}
 
-          {/* Show pending ADD columns */}
+          {draftColumnPreview && (
+            <Table.Tr
+              key="draft-preview"
+              className={styles.rowDraftPreview}
+            >
+              <Table.Td>
+                <ColumnNameCell name={draftColumnPreview.name} isPrimaryKey={draftColumnPreview.isPrimaryKey} />
+              </Table.Td>
+              <Table.Td>
+                <DataTypeCell baseType={draftColumnPreview.dataType} />
+              </Table.Td>
+              <Table.Td>
+                <LengthCell displayLength={draftColumnPreview.length?.toString() ?? null} />
+              </Table.Td>
+              <Table.Td>
+                <NullableCell isNullable={draftColumnPreview.isNullable} />
+              </Table.Td>
+              <Table.Td>
+                <DefaultValueCell defaultValue={draftColumnPreview.defaultValue} />
+              </Table.Td>
+              <Table.Td>
+                <PrimaryKeyCell isPrimaryKey={draftColumnPreview.isPrimaryKey} />
+              </Table.Td>
+              {isEditing && <Table.Td />}
+            </Table.Tr>
+          )}
+
           {addedColumns.map((def) => (
             <Table.Tr
               key={`new-${def.name}`}

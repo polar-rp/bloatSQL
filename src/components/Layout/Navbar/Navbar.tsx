@@ -292,7 +292,7 @@ function NavbarComponent({
             <Text size="xs" c="dimmed">Help BloatSQL keep swimming.</Text>
           </Box>
 
-          <Button style={{ zIndex: 1 }}>Donate</Button>
+          <Button disabled style={{ zIndex: 1 }}>Donate</Button>
         </Paper>
       </AppShell.Section>
     </>

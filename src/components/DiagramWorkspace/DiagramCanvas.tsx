@@ -17,6 +17,7 @@ import { TableNode } from './nodes/TableNode';
 import { RelationshipEdge } from './edges/RelationshipEdge';
 import { DiagramToolbar } from './DiagramToolbar';
 import { getLayoutedElements } from './utils/layoutAlgorithms';
+import './diagram.css';
 
 const nodeTypes = {
   tableNode: TableNode,
@@ -102,31 +103,6 @@ export function DiagramCanvas() {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <style>
-        {`
-          /* Handle hover states */
-          .table-node-handle:hover {
-            width: 10px !important;
-            height: 10px !important;
-            background: var(--mantine-primary-color-light) !important;
-          }
-
-          /* Handle connecting state */
-          .table-node-handle.connecting {
-            background: var(--mantine-color-blue-5) !important;
-          }
-
-          /* Handle valid connection state */
-          .table-node-handle.valid {
-            background: var(--mantine-color-green-5) !important;
-          }
-
-          /* Selected edge arrow color */
-          .react-flow__edge.selected path {
-            stroke: var(--mantine-primary-color-filled) !important;
-          }
-        `}
-      </style>
       <ReactFlow
         nodes={localNodes}
         edges={localEdges}
@@ -142,27 +118,6 @@ export function DiagramCanvas() {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        {/* Custom SVG marker for relationship arrows */}
-        <svg style={{ position: 'absolute', top: 0, left: 0 }}>
-          <defs>
-            <marker
-              id="relationship-arrow"
-              viewBox="0 0 10 10"
-              refX="9"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path
-                d="M 0 0 L 10 5 L 0 10 z"
-                fill="var(--mantine-color-default-border)"
-                style={{ transition: 'fill 0.2s' }}
-              />
-            </marker>
-          </defs>
-        </svg>
-
         <Background gap={16} size={1} />
         <MiniMap
           nodeStrokeWidth={3}

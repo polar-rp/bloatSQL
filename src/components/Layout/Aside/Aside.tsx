@@ -41,7 +41,6 @@ function AsideComponent() {
   const isAddingColumn = useIsAddingNewColumn();
   const isEditingStructure = useIsEditingStructure();
 
-  // Priority order: structure editing > row operations > cell editing
   if (isAddingColumn || editingColumn) {
     return (
       <>
@@ -51,7 +50,6 @@ function AsideComponent() {
     );
   }
 
-  // Show structure controls if we're in structure editing mode (even without active column form)
   if (isEditingStructure) {
     return (
       <>

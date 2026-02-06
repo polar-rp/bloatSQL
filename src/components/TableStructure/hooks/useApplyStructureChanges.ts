@@ -48,8 +48,6 @@ export function useApplyStructureChanges(): UseApplyStructureChangesResult {
           } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             errors.push(`SQL: ${sql}\nBłąd: ${errorMsg}`);
-            // Continue with other statements or stop?
-            // For safety, we stop on first error
             break;
           }
         }

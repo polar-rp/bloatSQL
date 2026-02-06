@@ -7,6 +7,7 @@ import {
   useIsEditingStructure,
   usePendingOperations,
   useEditingColumnDraft,
+  useDraftColumnPreview,
 } from '../../stores/structureEditStore';
 import { DisplayColumn } from '../../types/tableStructure';
 import { useTableStructure } from './hooks/useTableStructure';
@@ -18,20 +19,18 @@ export function TableStructureView() {
 
   const { columns, isLoading, error, clearError } = useTableStructure(selectedTable);
 
-  // Store state
   const isEditing = useIsEditingStructure();
   const pendingOperations = usePendingOperations();
   const editingColumn = useEditingColumnDraft();
+  const draftColumnPreview = useDraftColumnPreview();
 
   const {
     dropColumn,
     startEditingColumnInAside,
   } = useStructureEditStore();
 
-  // Local state for drop confirmation modal
   const [droppingColumn, setDroppingColumn] = useState<string | null>(null);
 
-  // Handlers
   const handleColumnClick = useCallback(
     (column: DisplayColumn) => {
       if (isEditing) {
@@ -93,12 +92,12 @@ export function TableStructureView() {
           isEditing={isEditing}
           pendingOperations={pendingOperations}
           editingColumnName={editingColumn?.name ?? null}
+          draftColumnPreview={draftColumnPreview}
           onColumnClick={handleColumnClick}
           onDropColumn={handleDropColumnRequest}
         />
       )}
 
-      {/* Drop Column Confirm Modal */}
       <DropColumnConfirmModal
         opened={droppingColumn !== null}
         onClose={() => setDroppingColumn(null)}

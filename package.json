@@ -1,7 +1,7 @@
 {
   "name": "bloat-sql",
   "private": true,
-  "version": "0.0.5",
+  "version": "0.0.6-alpha.1",
   "type": "module",
   "scripts": {
     "dev": "tauri dev",
@@ -19,7 +19,7 @@
     "@mantine/notifications": "^8.3.12",
     "@monaco-editor/react": "^4.7.0",
     "@tabler/icons-react": "^3.0.0",
-    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/api": "^2.10.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-os": "^2.3.1",
     "@xyflow/react": "^12.10.0",

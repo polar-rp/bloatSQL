@@ -7,7 +7,6 @@ export function transformToReactFlow(
   showTypes: boolean,
   showOnlyKeys: boolean
 ): { nodes: Node[]; edges: Edge[] } {
-  // Build a map of which columns have relationships for each table
   const tableRelatedColumns = new Map<string, Set<string>>();
 
   relationships.forEach((rel) => {
@@ -21,7 +20,6 @@ export function transformToReactFlow(
     tableRelatedColumns.get(rel.toTable)!.add(rel.toColumn);
   });
 
-  // Create nodes from tables
   const nodes: Node[] = Array.from(tables.entries()).map(
     ([tableName, columns], index) => ({
       id: tableName,
@@ -32,13 +30,11 @@ export function transformToReactFlow(
         columns,
         showTypes,
         showOnlyKeys,
-        // Pass related columns to the node for handle rendering
         relatedColumns: tableRelatedColumns.get(tableName) || new Set(),
       },
     })
   );
 
-  // Create edges from relationships with specific handle connections
   const edges: Edge[] = relationships.map((rel, index) => ({
     id: `${rel.constraintName}-${index}`,
     source: rel.fromTable,

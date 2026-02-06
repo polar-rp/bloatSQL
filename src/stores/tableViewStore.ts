@@ -44,7 +44,6 @@ export const useTableViewStore = create<TableViewStore>((set) => ({
   },
 }));
 
-// Selectors for optimal re-render performance
 export const useSelectedTable = () => useTableViewStore((s) => s.selectedTable);
 export const useViewMode = () => useTableViewStore((s) => s.viewMode);
 export const useSetSelectedTable = () => useTableViewStore((s) => s.setSelectedTable);

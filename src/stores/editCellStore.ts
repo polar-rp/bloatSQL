@@ -89,7 +89,6 @@ export const useEditCellStore = create<EditCellStore>((set) => ({
   },
 }));
 
-// Selectors
 export const useSelectedCell = () => useEditCellStore((s) => s.selectedCell);
 export const useIsEditingCell = () => useEditCellStore((s) => s.isEditing);
 export const useIsSavingCell = () => useEditCellStore((s) => s.isSaving);

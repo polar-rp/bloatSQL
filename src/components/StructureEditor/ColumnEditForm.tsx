@@ -23,6 +23,17 @@ import {
 } from '../../stores/structureEditStore';
 import { ColumnDefinition } from '../../types/tableStructure';
 
+function formValuesToPreview(values: ColumnFormValues, isPrimaryKey: boolean): ColumnDefinition {
+  return {
+    name: values.name.trim() || '(unnamed)',
+    dataType: values.dataType || 'VARCHAR',
+    length: values.length === '' ? undefined : values.length,
+    isNullable: values.isNullable,
+    isPrimaryKey,
+    defaultValue: values.defaultValue.trim() || null,
+  };
+}
+
 const DATA_TYPES = [
   {
     group: 'String',
@@ -76,7 +87,7 @@ interface ColumnFormValues {
 export function ColumnEditForm() {
   const editingColumn = useEditingColumnDraft();
   const isAddingNew = useIsAddingNewColumn();
-  const { addColumn, modifyColumn, clearColumnDraft } = useStructureEditStore();
+  const { addColumn, modifyColumn, clearColumnDraft, setDraftColumnPreview } = useStructureEditStore();
   const [error, setError] = useState<string | null>(null);
 
   const mode = isAddingNew ? 'add' : 'edit';
@@ -99,19 +110,27 @@ export function ColumnEditForm() {
       },
       dataType: (value) => (!value ? 'Data type is required' : null),
     },
+    onValuesChange: (values) => {
+      setDraftColumnPreview(
+        formValuesToPreview(values, editingColumn?.isPrimaryKey ?? false)
+      );
+    },
   });
 
   useEffect(() => {
     if (mode === 'edit' && editingColumn) {
-      form.setValues({
+      const values = {
         name: editingColumn.name,
         dataType: editingColumn.parsed.baseType.toUpperCase(),
-        length: editingColumn.characterMaximumLength ?? '',
+        length: editingColumn.characterMaximumLength ?? '' as number | '',
         isNullable: editingColumn.isNullable,
         defaultValue: editingColumn.columnDefault ?? '',
-      });
+      };
+      form.setValues(values);
+      setDraftColumnPreview(formValuesToPreview(values, editingColumn.isPrimaryKey));
     } else if (mode === 'add') {
       form.reset();
+      setDraftColumnPreview(formValuesToPreview(form.getValues(), false));
     }
     setError(null);
   }, [editingColumn, isAddingNew]);
@@ -142,8 +161,8 @@ export function ColumnEditForm() {
   };
 
   const handleCancel = () => {
-    clearColumnDraft();
     form.reset();
+    clearColumnDraft();
     setError(null);
   };
 

@@ -10,3 +10,15 @@
     outline: 2px dashed var(--mantine-primary-color-filled);
     outline-offset: -2px;
 }
+
+.rowDraftPreview {
+    outline: 2px dashed var(--mantine-color-green-6);
+    outline-offset: -2px;
+    background-color: color-mix(in srgb, var(--mantine-color-green-9) 40%, transparent);
+    animation: draftPulse 2s ease-in-out infinite;
+}
+
+@keyframes draftPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}

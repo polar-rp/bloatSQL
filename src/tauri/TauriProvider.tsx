@@ -97,7 +97,6 @@ export function useWindowControls() {
 
   const toggleMaximize = useCallback(async () => {
     await appWindow.toggleMaximize();
-    // Timeout is intentionally not cleaned up as it's a one-time UI update
     setTimeout(refreshWindowState, 50);
   }, [appWindow, refreshWindowState]);
 

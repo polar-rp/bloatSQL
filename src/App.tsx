@@ -44,6 +44,8 @@ import {
   useClearExportSuccess,
 } from "./stores/exportStore";
 import { useSetSelectedTable as useSetTableViewSelected } from "./stores/tableViewStore";
+import { useStructureEditStore } from "./stores/structureEditStore";
+import { useEditCellStore } from "./stores/editCellStore";
 import { Connection } from "./types/database";
 import {
   Header,
@@ -96,10 +98,8 @@ function App() {
 
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
-  // Navigation history for tables
   const navigationHistory = useNavigationHistory<string>(
     (tableName) => {
-      // When navigating back/forward, update the selected table
       setSelectedTable(tableName);
       setTableViewSelected(tableName);
       selectTable(tableName);
@@ -215,10 +215,14 @@ function App() {
       await disconnectFromDatabase();
       resetDatabaseState();
       setSelectedTable(null);
+      setTableViewSelected(null);
+      useStructureEditStore.getState().stopEditing();
+      useEditCellStore.getState().clearSelection();
+      useEditCellStore.getState().stopAddRow();
     } catch (error) {
       console.error("Failed to disconnect:", error);
     }
-  }, [disconnectFromDatabase, resetDatabaseState]);
+  }, [disconnectFromDatabase, resetDatabaseState, setTableViewSelected]);
 
   const handleRefreshConnection = useCallback(async () => {
     if (!activeConnection) return;
@@ -230,11 +234,15 @@ function App() {
       try {
         await changeDatabase(database);
         setSelectedTable(null);
+        setTableViewSelected(null);
+        useStructureEditStore.getState().stopEditing();
+        useEditCellStore.getState().clearSelection();
+        useEditCellStore.getState().stopAddRow();
       } catch (error) {
         console.error("Failed to change database:", error);
       }
     },
-    [changeDatabase],
+    [changeDatabase, setTableViewSelected],
   );
 
   const handleDeleteConnection = useCallback(
@@ -276,7 +284,6 @@ function App() {
       setSelectedTable(tableName);
       setTableViewSelected(tableName);
       selectTable(tableName);
-      // Add to navigation history
       navigationHistory.push(tableName);
     },
     [selectTable, setTableViewSelected, navigationHistory],
@@ -372,7 +379,6 @@ function App() {
         connection={editingConnection || undefined}
       />
 
-      {/* Export Modal */}
       {activeConnection && currentDatabase && (
         <ExportModal
           opened={exportModalOpened}

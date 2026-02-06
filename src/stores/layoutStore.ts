@@ -38,7 +38,6 @@ export const useLayoutStore = create<LayoutStore>()(
   )
 );
 
-// Atomic selectors - each component only re-renders when its specific value changes
 export const useNavbarCollapsed = () => useLayoutStore((s) => s.navbarCollapsed);
 export const useAsideCollapsed = () => useLayoutStore((s) => s.asideCollapsed);
 export const useFooterCollapsed = () => useLayoutStore((s) => s.footerCollapsed);

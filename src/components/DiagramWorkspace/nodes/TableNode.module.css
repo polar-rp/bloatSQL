@@ -1,0 +1,80 @@
+.card {
+  min-width: 220px;
+  max-width: 280px;
+}
+
+.row {
+  position: relative;
+  padding: 2px 4px;
+  cursor: auto;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.rowRelation {
+  background: var(--mantine-primary-color-light-hover);
+}
+
+.rowRelation:hover {
+  background: var(--mantine-primary-color-light);
+}
+
+.relationDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--mantine-radius-default);
+  border: 1px solid var(--mantine-primary-color-filled);
+  flex-shrink: 0;
+  transform: rotate(45deg);
+}
+
+.rowRelation .relationDot {
+  background: var(--mantine-primary-color-filled);
+}
+
+.iconSpacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.columnName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handle {
+  width: 8px;
+  height: 8px;
+  background: var(--mantine-primary-color-filled);
+}
+
+.handle:hover {
+  width: 10px;
+  height: 10px;
+  background: var(--mantine-primary-color-light);
+}
+
+.handle:global(.connecting) {
+  background: var(--mantine-color-blue-5);
+}
+
+.handle:global(.valid) {
+  background: var(--mantine-color-green-5);
+}
+
+.handleTarget {
+  border: 2px solid var(--mantine-color-body);
+}
+
+.handleSource {
+  border-radius: 0;
+}

@@ -39,7 +39,6 @@ export function MonacoSqlEditor({
 
         const suggestions: languages.CompletionItem[] = [];
 
-        // SQL Keywords
         const sqlKeywords = [
           'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE',
           'CREATE', 'DROP', 'ALTER', 'TABLE', 'DATABASE', 'INDEX',
@@ -60,10 +59,8 @@ export function MonacoSqlEditor({
           });
         });
 
-        // Add table names
         if (tables && tables.length > 0) {
           tables.forEach((table) => {
-            // For PostgreSQL, suggest both quoted and unquoted
             const isPostgres = activeConnection?.dbType === DatabaseType.PostgreSQL;
             const quoteChar = isPostgres ? '"' : '`';
 
@@ -76,7 +73,6 @@ export function MonacoSqlEditor({
               documentation: `Table: ${table}`,
             });
 
-            // Also add unquoted version
             suggestions.push({
               label: table,
               kind: monaco.languages.CompletionItemKind.Class,
@@ -87,7 +83,6 @@ export function MonacoSqlEditor({
           });
         }
 
-        // Add common SQL functions
         const sqlFunctions = [
           { name: 'NOW()', detail: 'Current timestamp' },
           { name: 'COUNT(*)', detail: 'Count all rows' },
@@ -114,7 +109,6 @@ export function MonacoSqlEditor({
           });
         });
 
-        // Add SQL snippets
         sqlSnippets.forEach((snippet) => {
           suggestions.push(convertSnippetToCompletion(snippet, range, monaco));
         });
@@ -123,7 +117,6 @@ export function MonacoSqlEditor({
       },
     });
 
-    // Register SQL formatter
     monaco.languages.registerDocumentFormattingEditProvider('sql', {
       provideDocumentFormattingEdits: (model) => {
         const text = model.getValue();
@@ -139,15 +132,11 @@ export function MonacoSqlEditor({
     });
   };
 
-  // Simple SQL formatter
   const formatSql = (sql: string): string => {
-    // Basic SQL formatting
     let formatted = sql
-      // Normalize whitespace
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Add newlines before major keywords
     const keywords = [
       'SELECT', 'FROM', 'WHERE', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN',
       'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET',
@@ -160,17 +149,14 @@ export function MonacoSqlEditor({
       formatted = formatted.replace(regex, `\n${keyword}`);
     });
 
-    // Add indentation for AND/OR
     formatted = formatted.replace(/\b(AND|OR)\b/gi, '\n  $1');
 
-    // Clean up extra newlines and trim
     formatted = formatted
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
       .join('\n');
 
-    // Add semicolon at the end if missing
     if (!formatted.endsWith(';')) {
       formatted += ';';
     }
@@ -178,15 +164,12 @@ export function MonacoSqlEditor({
     return formatted;
   };
 
-  // Handle editor mount
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Setup autocomplete
     setupSqlAutocomplete(monaco);
 
-    // Configure SQL language
     monaco.languages.setLanguageConfiguration('sql', {
       comments: {
         lineComment: '--',
@@ -205,12 +188,10 @@ export function MonacoSqlEditor({
       ],
     });
 
-    // Add keyboard shortcut for execute (Ctrl/Cmd + Enter)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       onExecute();
     });
 
-    // Add keyboard shortcut for format (Shift + Alt + F)
     editor.addCommand(
       monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
       () => {
@@ -218,14 +199,11 @@ export function MonacoSqlEditor({
       }
     );
 
-    // Focus editor
     editor.focus();
   };
 
-  // Update autocomplete when tables change
   useEffect(() => {
     if (monacoRef.current && tables) {
-      // Trigger autocomplete refresh by re-registering the provider
       setupSqlAutocomplete(monacoRef.current);
     }
   }, [tables]);

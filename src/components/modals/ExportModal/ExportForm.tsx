@@ -48,24 +48,19 @@ interface ExportFormProps {
 }
 
 interface FormValues {
-  // Structure options
   includeDrop: boolean;
   includeCreate: boolean;
 
-  // Data options
   dataMode: DataExportMode;
 
-  // Output options
   fileName: string;
   outputPath: string;
   exportFormat: 'sql';
 
-  // SQL-specific options
   maxInsertSize: number;
   addLocks: boolean;
   disableForeignKeyChecks: boolean;
 
-  // Table selection
   selectedTables: string[];
 }
 
@@ -116,21 +111,18 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
     },
   });
 
-  // Auto-select all tables on mount
   useEffect(() => {
     if (tables && tables.length > 0 && form.values.selectedTables.length === 0) {
       form.setFieldValue('selectedTables', [...tables]);
     }
   }, [tables]);
 
-  // Generate new filename when modal reopens
   useEffect(() => {
     form.setFieldValue('fileName', `${databaseName}_export_${new Date().getTime()}.sql`);
     clearExportSuccess();
     clearExportError();
   }, [databaseName, clearExportSuccess, clearExportError]);
 
-  // Load table statistics
   const loadTableStats = async () => {
     if (!tables || tables.length === 0) return;
 
@@ -159,7 +151,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
   };
 
   const estimateSizeFromRows = (rows: number): string => {
-    // Rough estimate: ~500 bytes per row in SQL format
     const bytes = rows * 500;
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -252,7 +243,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
     }
 
     try {
-      // Open save dialog
       const filePath = await save({
         defaultPath: defaultFilename,
         filters: filters,
@@ -260,11 +250,9 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
       });
 
       if (!filePath) {
-        // User cancelled
         return;
       }
 
-      // Write file using Tauri invoke
       await invoke('write_text_file', { path: filePath, content });
 
       clearExportSuccess();
@@ -309,7 +297,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
 
     await exportDatabase(options);
 
-    // Auto-close after 3 seconds if successful
     if (!exportError) {
       setTimeout(() => {
         onSuccess();
@@ -320,9 +307,7 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
   const stats = getTotalStats();
   const hasLargeDataset = stats.totalRows > 100000;
 
-  // Form for row export
   if (isRowExport) {
-    // Generate preview content based on selected format
     const getPreviewContent = () => {
       if (!rowData) return '';
 
@@ -412,7 +397,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
     );
   }
 
-  // Full database export form
   return (
     <form onSubmit={(e) => { e.preventDefault(); handleExport(); }}>
       <Stack gap="md" pos="relative">
@@ -462,7 +446,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
           </Alert>
         )}
 
-        {/* Structure Options */}
         <Card withBorder p="md">
           <Stack gap="xs">
             <Text size="sm" fw={500}>Structure Options</Text>
@@ -481,7 +464,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
           </Stack>
         </Card>
 
-        {/* Data Options */}
         <Card withBorder p="md">
           <Stack gap="xs">
             <Text size="sm" fw={500}>Data Options</Text>
@@ -514,7 +496,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
           </Stack>
         </Card>
 
-        {/* Output Options */}
         <Card withBorder p="md">
           <Stack gap="md">
             <div>
@@ -571,7 +552,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
               {...form.getInputProps('maxInsertSize')}
             />
 
-            {/* Advanced SQL Options */}
             <div>
               <Group
                 justify="space-between"
@@ -605,7 +585,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
           </Stack>
         </Card>
 
-        {/* Table Selection */}
         <Card withBorder p="md">
           <Stack gap="md">
             <Group justify="space-between">
@@ -674,7 +653,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
               </Stack>
             </ScrollArea>
 
-            {/* Export Summary */}
             {tableStats.length > 0 && form.values.selectedTables.length > 0 && (
               <>
                 <Divider />
@@ -702,7 +680,6 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
           </Stack>
         </Card>
 
-        {/* Action Buttons */}
         <Group justify="flex-end" mt="md">
           <Button variant="light" onClick={onSuccess} disabled={isExporting}>
             Cancel

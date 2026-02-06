@@ -34,11 +34,9 @@ interface QueryActions {
 
 type QueryStore = QueryState & QueryActions;
 
-// Helper function to format table name based on database type
 function formatTableName(tableName: string, dbType: DatabaseType | undefined): string {
   if (!dbType) return tableName;
 
-  // PostgreSQL uses double quotes, MySQL/MariaDB uses backticks
   if (dbType === DatabaseType.PostgreSQL) {
     return `"${tableName}"`;
   } else {
@@ -72,7 +70,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
 
     set({ isExecuting: true, error: null });
 
-    // Log to console
     useConsoleLogStore.getState().addLog(queryText);
 
     try {
@@ -115,7 +112,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       ]);
       set({ databases, currentDatabase, isLoadingDatabases: false });
 
-      // Load tables for the current database
       if (currentDatabase) {
         await get().loadTables();
       }
@@ -134,7 +130,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
     const activeConnection = useConnectionStore.getState().activeConnection;
     const dbType = activeConnection?.dbType;
 
-    // Format database change command based on DB type
     let logCommand: string;
     if (dbType === DatabaseType.PostgreSQL) {
       logCommand = `\\c ${databaseName}`;
@@ -142,7 +137,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       logCommand = `USE \`${databaseName}\`;`;
     }
 
-    // Log to console
     useConsoleLogStore.getState().addLog(logCommand);
 
     try {
@@ -166,7 +160,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       return;
     }
 
-    // Clear cell selection when changing tables to prevent stale form data
     useEditCellStore.getState().clearSelection();
 
     const activeConnection = useConnectionStore.getState().activeConnection;
@@ -179,7 +172,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
       error: null,
     });
 
-    // Log to console
     useConsoleLogStore.getState().addLog(query);
 
     try {
@@ -211,7 +203,6 @@ export const useQueryStore = create<QueryStore>((set, get) => ({
 
     set({ isExecuting: true, error: null });
 
-    // Log to console
     useConsoleLogStore.getState().addLog(query);
 
     try {

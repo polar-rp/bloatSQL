@@ -193,7 +193,6 @@ export const tauriCommands = {
 
     console.log('Invoking update_cell with request:', request);
 
-    // Backend returns UpdateCellResult with success/error
     interface BackendUpdateCellResult {
       success: boolean;
       error?: {
@@ -211,7 +210,6 @@ export const tauriCommands = {
 
     if (!result.success && result.error) {
       console.error('update_cell failed:', result.error);
-      // Throw a formatted error message that includes all details
       throw new Error(formatUpdateCellError(result.error));
     }
 

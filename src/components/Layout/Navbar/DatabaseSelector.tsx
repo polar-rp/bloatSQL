@@ -62,7 +62,6 @@ export function DatabaseSelector({
             </Stack>
           </Group>
 
-          {/* Przyciski - ActionIcon.Group ma built-in spacing */}
           <ActionIcon.Group>
             <Tooltip label="Refresh" position="top" withArrow>
               <ActionIcon 

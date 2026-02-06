@@ -77,7 +77,6 @@ export function ResultsCard({
     if (primaryKeyColumn?.name && row[primaryKeyColumn.name] !== undefined) {
       return String(row[primaryKeyColumn.name]);
     }
-    // Fallback: unikalna kombinacja wartości
     return `${rowIndex}-${JSON.stringify(row)}`;
   };
 
@@ -113,13 +112,11 @@ export function ResultsCard({
     if (contextMenu === null || !onOpenExportModal) return;
     const row = rows[contextMenu.rowIndex];
 
-    // Tworzenie obiektu z danymi wiersza
     const rowData: Record<string, unknown> = {};
     columns.forEach((col) => {
       rowData[col] = row[col];
     });
 
-    // Otwórz modal z danymi wiersza
     onOpenExportModal(rowData);
     handleCloseContextMenu();
   };

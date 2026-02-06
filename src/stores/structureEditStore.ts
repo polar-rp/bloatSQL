@@ -8,8 +8,9 @@ interface StructureEditState {
   pendingOperations: AlterColumnOperation[];
   selectedColumn: DisplayColumn | null;
   isEditingColumn: boolean;
-  editingColumnDraft: DisplayColumn | null; // Column being edited in Aside
-  isAddingNewColumn: boolean; // Whether we're adding a new column in Aside
+  editingColumnDraft: DisplayColumn | null;
+  isAddingNewColumn: boolean;
+  draftColumnPreview: ColumnDefinition | null;
   isApplying: boolean;
   error: string | null;
 }
@@ -22,6 +23,7 @@ interface StructureEditActions {
   startEditingColumnInAside: (column: DisplayColumn) => void;
   startAddingColumnInAside: () => void;
   clearColumnDraft: () => void;
+  setDraftColumnPreview: (draft: ColumnDefinition | null) => void;
   addColumn: (definition: ColumnDefinition) => void;
   modifyColumn: (columnName: string, newDefinition: ColumnDefinition) => void;
   dropColumn: (columnName: string) => void;
@@ -43,6 +45,7 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
   isEditingColumn: false,
   editingColumnDraft: null,
   isAddingNewColumn: false,
+  draftColumnPreview: null,
   isApplying: false,
   error: null,
 
@@ -55,6 +58,7 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
       isEditingColumn: true,
       editingColumnDraft: null,
       isAddingNewColumn: false,
+      draftColumnPreview: null,
       error: null,
     });
   },
@@ -68,6 +72,7 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
       isEditingColumn: false,
       editingColumnDraft: null,
       isAddingNewColumn: false,
+      draftColumnPreview: null,
       error: null,
     });
   },
@@ -91,7 +96,11 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
   },
 
   clearColumnDraft: () => {
-    set({ editingColumnDraft: null, isAddingNewColumn: false });
+    set({ editingColumnDraft: null, isAddingNewColumn: false, draftColumnPreview: null });
+  },
+
+  setDraftColumnPreview: (draft) => {
+    set({ draftColumnPreview: draft });
   },
 
   addColumn: (definition) => {
@@ -170,7 +179,6 @@ export const useStructureEditStore = create<StructureEditStore>((set) => ({
   },
 }));
 
-// Fine-grained selectors for performance
 export const useSelectedStructureColumn = () =>
   useStructureEditStore((s) => s.selectedColumn);
 
@@ -203,3 +211,6 @@ export const useEditingColumnDraft = () =>
 
 export const useIsAddingNewColumn = () =>
   useStructureEditStore((s) => s.isAddingNewColumn);
+
+export const useDraftColumnPreview = () =>
+  useStructureEditStore((s) => s.draftColumnPreview);

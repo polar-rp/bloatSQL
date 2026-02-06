@@ -1,6 +1,6 @@
 import { memo, useCallback } from "react";
-import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack, Badge } from "@mantine/core";
-import { IconTable, IconList, IconSql, IconPlus, IconSchema, IconEdit, IconCheck, IconX } from "@tabler/icons-react";
+import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack } from "@mantine/core";
+import { IconTable, IconList, IconSql, IconPlus, IconSchema } from "@tabler/icons-react";
 import styles from "./Footer.module.css";
 import { useFooterCollapsed, useLayoutStore } from "../../../stores/layoutStore";
 import {
@@ -32,7 +32,6 @@ function FooterComponent() {
   const queryEditorVisible = useQueryEditorVisible();
   const toggleQueryEditor = useToggleQueryEditor();
 
-  // Structure editing state
   const isEditingStructure = useIsEditingStructure();
   const pendingOperations = usePendingOperations();
   const activeConnection = useActiveConnection();
@@ -51,7 +50,6 @@ function FooterComponent() {
     clearAllPending();
   }, [clearAllPending]);
 
-  // Show PendingChangesPreview when in structure mode, editing, and has pending operations
   const showPendingPreview = viewMode === 'structure' && isEditingStructure && pendingOperations.length > 0;
 
   return (
@@ -96,7 +94,6 @@ function FooterComponent() {
               ]}
             />
 
-            {/* Data mode controls */}
             {viewMode === 'data' && (
               <Button
                 variant="default"
@@ -109,7 +106,6 @@ function FooterComponent() {
                     useEditCellStore.getState().startAddRow(selectedTable, columns);
                     useLayoutStore.getState().setAsideCollapsed(false);
                   } catch {
-                    // Column fetch failed - button stays enabled for retry
                   }
                 }}
               >
@@ -117,13 +113,11 @@ function FooterComponent() {
               </Button>
             )}
 
-            {/* Structure mode controls */}
             {viewMode === 'structure' && selectedTable && (
               <StructureControls />
             )}
           </Group>
 
-          {/* Right side controls */}
           {viewMode === 'data' && (
             <Tooltip withArrow label={queryEditorVisible ? "Hide Query Editor" : "Show Query Editor"}>
               <ActionIcon
@@ -138,7 +132,6 @@ function FooterComponent() {
           )}
         </Group>
 
-        {/* Bottom section: ConsoleLog or PendingChangesPreview */}
         {showPendingPreview ? (
           <Box
             w="100%"

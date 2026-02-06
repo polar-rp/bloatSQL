@@ -40,21 +40,17 @@ export function useNavigationHistory<T>(
   }, [canGoForward, currentIndex, history, onNavigate]);
 
   const push = useCallback((item: T) => {
-    // Jeśli nawigujemy (back/forward), nie dodawaj do historii
     if (isNavigatingRef.current) {
       isNavigatingRef.current = false;
       return;
     }
 
     setHistory((prev) => {
-      // Nie dodawaj jeśli to ten sam element co aktualny
       if (currentIndex >= 0 && prev[currentIndex] && isEqual(prev[currentIndex], item)) {
         return prev;
       }
 
-      // Usuń wszystko po currentIndex (forward history)
       const newHistory = prev.slice(0, currentIndex + 1);
-      // Dodaj nowy element
       newHistory.push(item);
       return newHistory;
     });
@@ -62,7 +58,6 @@ export function useNavigationHistory<T>(
     setCurrentIndex((prev) => prev + 1);
   }, [currentIndex, isEqual]);
 
-  // Reset flagi nawigacji po każdej zmianie
   useEffect(() => {
     const timer = setTimeout(() => {
       isNavigatingRef.current = false;

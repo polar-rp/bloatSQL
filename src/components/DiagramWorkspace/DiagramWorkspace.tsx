@@ -12,7 +12,6 @@ import { DiagramCanvas } from './DiagramCanvas';
 export function DiagramWorkspace() {
   const activeConnection = useConnectionStore((s) => s.activeConnection);
 
-  // Use individual selectors to avoid unnecessary re-renders
   const nodes = useDiagramStore((s) => s.nodes);
   const showColumnTypes = useDiagramStore((s) => s.showColumnTypes);
   const showOnlyKeys = useDiagramStore((s) => s.showOnlyKeys);
@@ -33,20 +32,16 @@ export function DiagramWorkspace() {
       setLoading(true);
       setError(null);
 
-      // Fetch all tables
       const tableNames = await tauriCommands.listTables();
       const tableColumnsMap = new Map();
 
-      // Fetch columns for each table
       for (const tableName of tableNames) {
         const columns = await tauriCommands.getTableColumns(tableName);
         tableColumnsMap.set(tableName, columns);
       }
 
-      // Fetch relationships
       const relationships = await tauriCommands.getTableRelationships();
 
-      // Transform to React Flow format
       const { nodes: transformedNodes, edges: transformedEdges } = transformToReactFlow(
         tableColumnsMap,
         relationships,
@@ -54,7 +49,6 @@ export function DiagramWorkspace() {
         showOnlyKeys
       );
 
-      // Apply auto-layout
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         transformedNodes,
         transformedEdges
@@ -70,7 +64,6 @@ export function DiagramWorkspace() {
     }
   }, [activeConnection, showColumnTypes, showOnlyKeys, setNodes, setEdges, setLoading, setError]);
 
-  // Load data when connection changes
   useEffect(() => {
     if (activeConnection) {
       loadDiagramData();

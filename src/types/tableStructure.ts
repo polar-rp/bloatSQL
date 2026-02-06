@@ -10,7 +10,6 @@ export interface DisplayColumn extends TableColumn {
   displayLength: string | null;
 }
 
-// Types for future ALTER TABLE editing
 export type AlterOperationType =
   | 'ADD_COLUMN'
   | 'DROP_COLUMN'

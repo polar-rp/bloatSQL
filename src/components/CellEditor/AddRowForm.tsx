@@ -103,7 +103,6 @@ export function AddRowForm() {
       setShowInserted(true);
       setTimeout(() => setShowInserted(false), 2000);
 
-      // Reset form for another insert
       form.reset();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);

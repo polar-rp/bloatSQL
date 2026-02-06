@@ -320,7 +320,6 @@ pub async fn export_database(
 
             let file_path = std::path::Path::new(&options.output_path).join(&options.file_name);
 
-            // Use async file I/O
             tokio::fs::write(&file_path, sql_content)
                 .await
                 .map_err(|e| format!("Failed to write file: {}", e))?;
@@ -332,13 +331,11 @@ pub async fn export_database(
     }
 }
 
-/// Result of a cell update operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateCellResult {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<UpdateCellError>,
-    /// The SQL query that was executed (only present on success).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub executed_query: Option<String>,
 }

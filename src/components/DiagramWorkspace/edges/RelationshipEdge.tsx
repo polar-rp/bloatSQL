@@ -7,12 +7,11 @@ import {
   type Edge,
 } from '@xyflow/react';
 
-// Edge data structure
 interface RelationshipEdgeData {
   fromColumn: string;
   toColumn: string;
   constraintName: string;
-  [key: string]: unknown; // Index signature for React Flow compatibility
+  [key: string]: unknown;
 }
 
 function RelationshipEdgeComponent({
@@ -26,7 +25,6 @@ function RelationshipEdgeComponent({
   data,
   selected,
   style = {},
-  markerEnd,
 }: EdgeProps<Edge<RelationshipEdgeData>>) {
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -42,7 +40,6 @@ function RelationshipEdgeComponent({
 
   return (
     <>
-      {/* Main edge path */}
       <BaseEdge
         id={id}
         path={edgePath}
@@ -52,12 +49,12 @@ function RelationshipEdgeComponent({
             ? 'var(--mantine-primary-color-filled)'
             : 'var(--mantine-color-default-border)',
           strokeWidth: selected ? 2.5 : 1.5,
+          strokeDasharray: '8 4',
+          animation: 'dashdraw 2s linear infinite',
           cursor: 'pointer',
         }}
-        markerEnd={markerEnd || 'url(#relationship-arrow)'}
       />
 
-      {/* Hover/selection label showing column relationship */}
       {selected && edgeData && (
         <EdgeLabelRenderer>
           <div

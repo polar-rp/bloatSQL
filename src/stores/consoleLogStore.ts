@@ -49,7 +49,6 @@ export const useConsoleLogStore = create<ConsoleLogStore>((set) => ({
   },
 }));
 
-// Selectors
 export const useConsoleLogs = () => useConsoleLogStore((s) => s.logs);
 export const useAddLog = () => useConsoleLogStore((s) => s.addLog);
 export const useClearLogs = () => useConsoleLogStore((s) => s.clearLogs);

@@ -98,7 +98,6 @@ export function CellEditForm() {
       return;
     }
 
-    // Only consider columns that exist in the current table's row data
     const validColumns = Object.keys(selectedCell.rowData);
     const changedColumns = Object.entries(values).filter(([key, value]) => {
       if (!validColumns.includes(key)) return false;
@@ -127,7 +126,6 @@ export function CellEditForm() {
 
         const result = await tauriCommands.updateCell(updateRequest);
 
-        // Log the executed SQL query to console
         if (result.executedQuery) {
           useConsoleLogStore.getState().addLog(result.executedQuery);
         }

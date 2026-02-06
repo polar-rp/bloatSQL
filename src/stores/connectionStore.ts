@@ -99,12 +99,10 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     try {
       await tauriCommands.connectToDatabase(connection);
       set({ activeConnection: connection, isLoading: false });
-      // Measure ping after connecting
       try {
         const ping = await tauriCommands.pingConnection();
         set({ pingMs: ping });
       } catch {
-        // Non-critical, don't fail the connection
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to connect';
