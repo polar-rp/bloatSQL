@@ -31,16 +31,26 @@ A modern, cross-platform database client built with Tauri, React, and Rust. Bloa
 ## Screenshots
 
 ### Darkmode
-<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/2932dc73-c4fc-4eb3-94f9-7770bd73e07c" />
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/6556bb41-2250-4749-a71a-b9e95e8d929d" />
+
 
 ### Lightmode
-<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/4ace2f8a-2a45-4d70-8a95-0823ed122460" />
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/94ba9412-587a-4f84-a6f7-f05fe054853a" />
+
 
 ### Settings
-<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/20781802-08cf-47c2-aa73-031c606801af" />
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/91b284d4-064d-4ea1-84b7-526596ccf9b8" />
+
 
 ### Connect modal
-<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/8c9ae521-6884-490a-b4db-de15f06a94cc" />
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/81986255-e34b-4c47-83fa-033b0d6371b9" />
+
+### Diagram
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/fb5f29f8-aa4d-43ee-8b59-dc6822d1fc3c" />
+
+### Adding new column
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/39d96a82-0c0c-4935-a241-effed5a6cc65" />
+
 
 
 ## Tech Stack
@@ -332,18 +342,10 @@ Passwords are currently stored using base64 encoding in a local SQLite database.
 
 ## Roadmap
 
-- [ ] Support for additional databases (MongoDB, SQLite, SQL Server)
-- [ ] Query autocomplete and syntax highlighting
-- [ ] Visual query builder
-- [ ] Schema visualization
-- [ ] SSH tunnel support for remote connections
+- [ ] Support for additional databases (MongoDB)
 - [ ] Query performance analysis
 - [ ] Saved queries and snippets
-- [ ] Multi-tab query editing
 - [ ] CSV/JSON export formats
-- [ ] Improved password encryption
-- [ ] Connection import/export
-- [ ] Dark mode improvements
 
 ## License
 
