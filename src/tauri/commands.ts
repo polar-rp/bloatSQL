@@ -191,8 +191,6 @@ export const tauriCommands = {
       primary_key_value: params.primaryKeyValue,
     };
 
-    console.log('Invoking update_cell with request:', request);
-
     interface BackendUpdateCellResult {
       success: boolean;
       error?: {
@@ -209,11 +207,9 @@ export const tauriCommands = {
     const result = await invoke<BackendUpdateCellResult>('update_cell', { request });
 
     if (!result.success && result.error) {
-      console.error('update_cell failed:', result.error);
       throw new Error(formatUpdateCellError(result.error));
     }
 
-    console.log('update_cell success');
     return {
       success: result.success,
       error: result.error,

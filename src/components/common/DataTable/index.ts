@@ -1,6 +1,3 @@
-export { SplitButton } from './SplitButton';
-export type { SplitButtonMenuItem } from './SplitButton';
-
 export { DataTable } from './DataTable';
 export type { DataTableProps, RowProps } from './DataTable';
 export type { ColumnDef, Row, SortingState, OnChangeFn } from './DataTable';

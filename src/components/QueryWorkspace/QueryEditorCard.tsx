@@ -1,6 +1,19 @@
-import { Group, Kbd, Stack } from '@mantine/core';
-import { MonacoSqlEditor } from './MonacoSqlEditor';
+import { useRef } from 'react';
+import { Group, Kbd, Stack, Menu, ActionIcon, Tooltip, Center, Text, Button } from '@mantine/core';
+import { IconDatabase } from '@tabler/icons-react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { MonacoSqlEditor, MonacoSqlEditorRef } from './MonacoSqlEditor';
 import { SplitButton, SplitButtonMenuItem } from '../common';
+import { useInjectBenchmarkData, useExecuteQueryText } from '../../stores/queryStore';
+
+function EditorErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
+  return (
+    <Center h="100%" style={{ flexDirection: 'column', gap: 8 }}>
+      <Text c="dimmed" size="sm">Editor failed to load</Text>
+      <Button size="xs" variant="subtle" onClick={resetErrorBoundary}>Retry</Button>
+    </Center>
+  );
+}
 
 interface QueryEditorCardProps {
   query: string;
@@ -11,6 +24,8 @@ interface QueryEditorCardProps {
   editorHeight: number | string;
 }
 
+const BENCHMARK_SIZES = [1_000, 10_000, 50_000, 100_000];
+
 export function QueryEditorCard({
   query,
   onQueryChange,
@@ -19,32 +34,56 @@ export function QueryEditorCard({
   isConnected,
   editorHeight,
 }: QueryEditorCardProps) {
+  const injectBenchmarkData = useInjectBenchmarkData();
+  const executeQueryText = useExecuteQueryText();
+  const editorRef = useRef<MonacoSqlEditorRef>(null);
+
   const menuItems: SplitButtonMenuItem[] = [
     {
       label: 'Run All',
-      onClick: () => {
-        // TODO: Implement run all functionality
-        console.log('Run all queries');
-      },
+      onClick: onExecute,
     },
     {
       label: 'Run Selection',
       onClick: () => {
-        // TODO: Implement run selection functionality
-        console.log('Run selected query');
+        const selected = editorRef.current?.getSelectedText() ?? '';
+        if (selected.trim()) {
+          executeQueryText(selected);
+        }
       },
     },
   ];
 
   return (
     <Stack gap={0} style={{ height: editorHeight }}>
-      <MonacoSqlEditor
-        value={query}
-        onChange={onQueryChange}
-        onExecute={onExecute}
-      />
+      <ErrorBoundary FallbackComponent={EditorErrorFallback}>
+        <MonacoSqlEditor
+          ref={editorRef}
+          value={query}
+          onChange={onQueryChange}
+          onExecute={onExecute}
+        />
+      </ErrorBoundary>
 
       <Group justify="flex-end" px={'md'} py={4}>
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <Tooltip label="Load benchmark data" withArrow>
+              <ActionIcon variant="subtle" size={30}>
+                <IconDatabase size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>Mock data (frontend test)</Menu.Label>
+            {BENCHMARK_SIZES.map((n) => (
+              <Menu.Item key={n} onClick={() => injectBenchmarkData(n)}>
+                {n.toLocaleString('pl-PL')} rows
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
+
         <SplitButton
           label="Run Current"
           onClick={onExecute}

@@ -32,6 +32,7 @@ export function StructureEditControls() {
     setApplying,
     setError: setStoreError,
     clearColumnDraft,
+    removeOperationByIndex,
   } = useStructureEditStore();
 
   const { applyChanges, isApplying: isApplyingHook } = useApplyStructureChanges();
@@ -106,7 +107,13 @@ export function StructureEditControls() {
             </Alert>
           )}
 
-          <PendingChangesPreview operations={pendingOperations} />
+          <PendingChangesPreview
+            tableName={selectedTable ?? ''}
+            operations={pendingOperations}
+            dbType={dbType}
+            onUndoOperation={removeOperationByIndex}
+            onClearAll={clearAllPending}
+          />
 
           <Group gap="xs" grow>
             <Button

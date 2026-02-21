@@ -1,5 +1,7 @@
-import { Table, ActionIcon, Tooltip } from '@mantine/core';
+import { useMemo, useCallback } from 'react';
+import { ActionIcon, Tooltip } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
+import { type ColumnDef, type Row } from '@tanstack/react-table';
 import { DisplayColumn, AlterColumnOperation, ColumnDefinition } from '../../../types/tableStructure';
 import { ColumnNameCell } from './ColumnNameCell';
 import { DataTypeCell } from './DataTypeCell';
@@ -7,25 +9,56 @@ import { LengthCell } from './LengthCell';
 import { NullableCell } from './NullableCell';
 import { DefaultValueCell } from './DefaultValueCell';
 import { PrimaryKeyCell } from './PrimaryKeyCell';
+import { DataTable, type RowProps } from '../../common/DataTable';
 import styles from '../TableStructureView.module.css';
 
-interface StructureTableProps {
-  columns: DisplayColumn[];
-  isEditing?: boolean;
-  pendingOperations?: AlterColumnOperation[];
-  editingColumnName?: string | null;
-  draftColumnPreview?: ColumnDefinition | null;
-  onColumnClick?: (column: DisplayColumn) => void;
-  onDropColumn?: (columnName: string) => void;
+// Zunifikowany typ wewnętrzny – łączy DisplayColumn, draft i added ColumnDefinition
+// w jednorodną tablicę dla TanStack Table.
+interface StructureTableRow {
+  kind: 'existing' | 'draft' | 'added';
+  name: string;
+  baseType: string;
+  displayLength: string | null;
+  isNullable: boolean;
+  columnDefault: string | null;
+  isPrimaryKey: boolean;
+  displayColumn?: DisplayColumn; // tylko kind='existing', potrzebne dla onColumnClick
+}
+
+function fromDisplayColumn(col: DisplayColumn): StructureTableRow {
+  return {
+    kind: 'existing',
+    name: col.name,
+    baseType: col.parsed.baseType,
+    displayLength: col.displayLength,
+    isNullable: col.isNullable,
+    columnDefault: col.columnDefault ?? null,
+    isPrimaryKey: col.isPrimaryKey,
+    displayColumn: col,
+  };
+}
+
+function fromColumnDefinition(
+  def: ColumnDefinition,
+  kind: 'draft' | 'added'
+): StructureTableRow {
+  return {
+    kind,
+    name: def.name,
+    baseType: def.dataType,
+    displayLength: def.length?.toString() ?? null,
+    isNullable: def.isNullable,
+    columnDefault: def.defaultValue ?? null,
+    isPrimaryKey: def.isPrimaryKey,
+  };
 }
 
 function getRowHighlight(
-  columnName: string,
+  name: string,
   pendingOperations: AlterColumnOperation[]
 ): string | undefined {
-  const op = pendingOperations.find((o) => o.columnName === columnName);
+  const op = pendingOperations.find((o) => o.columnName === name);
   if (!op) return undefined;
-
   switch (op.type) {
     case 'DROP_COLUMN':
       return 'var(--mantine-color-red-9)';
@@ -38,6 +71,16 @@ function getRowHighlight(
   }
 }
 
+interface StructureTableProps {
+  columns: DisplayColumn[];
+  isEditing?: boolean;
+  pendingOperations?: AlterColumnOperation[];
+  editingColumnName?: string | null;
+  draftColumnPreview?: ColumnDefinition | null;
+  onColumnClick?: (column: DisplayColumn) => void;
+  onDropColumn?: (columnName: string) => void;
+}
+
 export function StructureTable({
   columns,
   isEditing = false,
@@ -47,149 +90,151 @@ export function StructureTable({
   onColumnClick,
   onDropColumn,
 }: StructureTableProps) {
-  const addedColumns = pendingOperations
-    .filter((op) => op.type === 'ADD_COLUMN' && op.newDefinition)
-    .map((op) => op.newDefinition!);
+  // Budujemy zunifikowaną tablicę danych
+  const data = useMemo<StructureTableRow[]>(() => {
+    const rows: StructureTableRow[] = columns.map(fromDisplayColumn);
 
-  return (
-    <Table.ScrollContainer minWidth={600} className={styles.tableContainer}>
-      <Table
-        striped
-        highlightOnHover
-        withColumnBorders
-        stickyHeader
-        captionSide="top"
-        className={styles.structureTable}
-      >
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Column name</Table.Th>
-            <Table.Th>Data type</Table.Th>
-            <Table.Th>Length/Set</Table.Th>
-            <Table.Th>Nullable</Table.Th>
-            <Table.Th>Default</Table.Th>
-            <Table.Th>Primary key</Table.Th>
-            {isEditing && <Table.Th w={50}>Actions</Table.Th>}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {columns.map((col) => {
-            const rowBg = getRowHighlight(col.name, pendingOperations);
-            const isDropped = pendingOperations.some(
-              (op) => op.type === 'DROP_COLUMN' && op.columnName === col.name
-            );
-            const isEditingThisRow = editingColumnName === col.name;
+    if (draftColumnPreview) {
+      rows.push(fromColumnDefinition(draftColumnPreview, 'draft'));
+    }
 
-            return (
-              <Table.Tr
-                key={col.name}
-                onClick={onColumnClick && !isDropped ? () => onColumnClick(col) : undefined}
-                className={isEditingThisRow ? styles.rowEditing : undefined}
-                style={{
-                  cursor: onColumnClick && isEditing && !isDropped ? 'pointer' : undefined,
-                  backgroundColor: rowBg,
-                  opacity: isDropped ? 0.5 : 1,
-                  textDecoration: isDropped ? 'line-through' : undefined,
+    const addedColumns = pendingOperations
+      .filter((op) => op.type === 'ADD_COLUMN' && op.newDefinition)
+      .map((op) => fromColumnDefinition(op.newDefinition!, 'added'));
+
+    rows.push(...addedColumns);
+
+    return rows;
+  }, [columns, draftColumnPreview, pendingOperations]);
+
+  const columnDefs = useMemo<ColumnDef<StructureTableRow, unknown>[]>(() => {
+    const defs: ColumnDef<StructureTableRow, unknown>[] = [
+      {
+        id: 'name',
+        accessorKey: 'name',
+        header: 'Column name',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <ColumnNameCell name={row.original.name} isPrimaryKey={row.original.isPrimaryKey} />
+        ),
+      },
+      {
+        id: 'dataType',
+        accessorKey: 'baseType',
+        header: 'Data type',
+        enableSorting: false,
+        cell: ({ getValue }) => <DataTypeCell baseType={getValue() as string} />,
+      },
+      {
+        id: 'length',
+        accessorKey: 'displayLength',
+        header: 'Length/Set',
+        enableSorting: false,
+        cell: ({ getValue }) => <LengthCell displayLength={getValue() as string | null} />,
+      },
+      {
+        id: 'nullable',
+        accessorKey: 'isNullable',
+        header: 'Nullable',
+        enableSorting: false,
+        cell: ({ getValue }) => <NullableCell isNullable={getValue() as boolean} />,
+      },
+      {
+        id: 'default',
+        accessorKey: 'columnDefault',
+        header: 'Default',
+        enableSorting: false,
+        cell: ({ getValue }) => <DefaultValueCell defaultValue={getValue() as string | null} />,
+      },
+      {
+        id: 'primaryKey',
+        accessorKey: 'isPrimaryKey',
+        header: 'Primary key',
+        enableSorting: false,
+        cell: ({ getValue }) => <PrimaryKeyCell isPrimaryKey={getValue() as boolean} />,
+      },
+    ];
+
+    if (isEditing) {
+      defs.push({
+        id: 'actions',
+        header: '',
+        size: 50,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const isDropped = pendingOperations.some(
+            (op) => op.type === 'DROP_COLUMN' && op.columnName === row.original.name
+          );
+          if (isDropped || row.original.kind !== 'existing') return null;
+          return (
+            <Tooltip label="Delete column">
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDropColumn?.(row.original.name);
                 }}
               >
-                <Table.Td>
-                  <ColumnNameCell name={col.name} isPrimaryKey={col.isPrimaryKey} />
-                </Table.Td>
-                <Table.Td>
-                  <DataTypeCell baseType={col.parsed.baseType} />
-                </Table.Td>
-                <Table.Td>
-                  <LengthCell displayLength={col.displayLength} />
-                </Table.Td>
-                <Table.Td>
-                  <NullableCell isNullable={col.isNullable} />
-                </Table.Td>
-                <Table.Td>
-                  <DefaultValueCell defaultValue={col.columnDefault} />
-                </Table.Td>
-                <Table.Td>
-                  <PrimaryKeyCell isPrimaryKey={col.isPrimaryKey} />
-                </Table.Td>
-                {isEditing && (
-                  <Table.Td>
-                    {!isDropped && (
-                      <Tooltip label="Delete column">
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDropColumn?.(col.name);
-                          }}
-                        >
-                          <IconTrash size={14} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
-                  </Table.Td>
-                )}
-              </Table.Tr>
-            );
-          })}
+                <IconTrash size={14} />
+              </ActionIcon>
+            </Tooltip>
+          );
+        },
+      });
+    }
 
-          {draftColumnPreview && (
-            <Table.Tr
-              key="draft-preview"
-              className={styles.rowDraftPreview}
-            >
-              <Table.Td>
-                <ColumnNameCell name={draftColumnPreview.name} isPrimaryKey={draftColumnPreview.isPrimaryKey} />
-              </Table.Td>
-              <Table.Td>
-                <DataTypeCell baseType={draftColumnPreview.dataType} />
-              </Table.Td>
-              <Table.Td>
-                <LengthCell displayLength={draftColumnPreview.length?.toString() ?? null} />
-              </Table.Td>
-              <Table.Td>
-                <NullableCell isNullable={draftColumnPreview.isNullable} />
-              </Table.Td>
-              <Table.Td>
-                <DefaultValueCell defaultValue={draftColumnPreview.defaultValue} />
-              </Table.Td>
-              <Table.Td>
-                <PrimaryKeyCell isPrimaryKey={draftColumnPreview.isPrimaryKey} />
-              </Table.Td>
-              {isEditing && <Table.Td />}
-            </Table.Tr>
-          )}
+    return defs;
+  }, [isEditing, pendingOperations, onDropColumn]);
 
-          {addedColumns.map((def) => (
-            <Table.Tr
-              key={`new-${def.name}`}
-              style={{
-                backgroundColor: 'var(--mantine-color-green-9)',
-              }}
-            >
-              <Table.Td>
-                <ColumnNameCell name={def.name} isPrimaryKey={def.isPrimaryKey} />
-              </Table.Td>
-              <Table.Td>
-                <DataTypeCell baseType={def.dataType} />
-              </Table.Td>
-              <Table.Td>
-                <LengthCell displayLength={def.length?.toString() ?? null} />
-              </Table.Td>
-              <Table.Td>
-                <NullableCell isNullable={def.isNullable} />
-              </Table.Td>
-              <Table.Td>
-                <DefaultValueCell defaultValue={def.defaultValue} />
-              </Table.Td>
-              <Table.Td>
-                <PrimaryKeyCell isPrimaryKey={def.isPrimaryKey} />
-              </Table.Td>
-              {isEditing && <Table.Td />}
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
-    </Table.ScrollContainer>
+  const getRowProps = useCallback(
+    (row: Row<StructureTableRow>): RowProps => {
+      const r = row.original;
+
+      if (r.kind === 'draft') {
+        return { className: styles.rowDraftPreview };
+      }
+
+      if (r.kind === 'added') {
+        return { style: { backgroundColor: 'var(--mantine-color-green-9)' } };
+      }
+
+      // kind === 'existing'
+      const isDropped = pendingOperations.some(
+        (op) => op.type === 'DROP_COLUMN' && op.columnName === r.name
+      );
+      const rowBg = getRowHighlight(r.name, pendingOperations);
+      const isEditingThisRow = editingColumnName === r.name;
+
+      return {
+        style: {
+          cursor: onColumnClick && isEditing && !isDropped ? 'pointer' : undefined,
+          backgroundColor: rowBg,
+          opacity: isDropped ? 0.5 : 1,
+          textDecoration: isDropped ? 'line-through' : undefined,
+        },
+        className: isEditingThisRow ? styles.rowEditing : undefined,
+        onClick:
+          onColumnClick && !isDropped && r.displayColumn
+            ? () => onColumnClick(r.displayColumn!)
+            : undefined,
+      };
+    },
+    [pendingOperations, editingColumnName, isEditing, onColumnClick]
+  );
+
+  return (
+    <DataTable
+      data={data}
+      columns={columnDefs}
+      striped
+      highlightOnHover
+      withColumnBorders
+      getRowProps={getRowProps}
+      style={{ maxHeight: 'calc(100vh - 200px)' }}
+      className={styles.structureTable}
+      estimatedRowHeight={36}
+    />
   );
 }

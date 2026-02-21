@@ -103,6 +103,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
         const ping = await tauriCommands.pingConnection();
         set({ pingMs: ping });
       } catch {
+        set({ pingMs: null });
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to connect';

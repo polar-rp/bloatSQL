@@ -35,7 +35,7 @@ export const useConsoleLogStore = create<ConsoleLogStore>((set) => ({
 
   addLog: (action) => {
     const newLog: ConsoleLogEntry = {
-      id: `${Date.now()}-${Math.random()}`,
+      id: crypto.randomUUID(),
       timestamp: formatTimestamp(),
       action,
     };

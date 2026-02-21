@@ -1,19 +1,18 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
   Text,
   Loader,
   Center,
   Alert,
   Box,
-  Table,
   Menu,
 } from '@mantine/core';
-import { IconAlertCircle, IconDownload, IconTrash } from '@tabler/icons-react';
-import { QueryResult, TableColumn, DatabaseType } from '../../types/database';
+import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
+import { type ColumnDef, type Row } from '@tanstack/react-table';
+import { QueryResult } from '../../types/database';
 import { useSelectCell, useSelectedCell } from '../../stores/editCellStore';
-import { useLoadedTable, useQueryStore } from '../../stores/queryStore';
-import { useConnectionStore } from '../../stores/connectionStore';
-import { tauriCommands } from '../../tauri/commands';
+import { useLoadedTable, useTableColumns } from '../../stores/queryStore';
+import { DataTable } from '../common/DataTable';
 import styles from './ResultsCard.module.css';
 
 interface ResultsCardProps {
@@ -32,6 +31,32 @@ function formatCellValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+// Sub-komponent czytający selectedCell bezpośrednio ze store –
+// unika uwzględniania selectedCell w deps kolumn i nie powoduje
+// ich przebudowy przy każdym kliknięciu komórki.
+interface ResultCellProps {
+  rowIndex: number;
+  columnName: string;
+  value: unknown;
+  rowData: Record<string, unknown>;
+  onCellClick: (rowIndex: number, columnName: string, rowData: Record<string, unknown>) => void;
+}
+
+function ResultCell({ rowIndex, columnName, value, rowData, onCellClick }: ResultCellProps) {
+  const selectedCell = useSelectedCell();
+  const isFocused =
+    selectedCell?.rowIndex === rowIndex && selectedCell?.columnName === columnName;
+
+  return (
+    <span
+      className={`${styles.cellClickable} ${isFocused ? styles.cellFocused : ''}`}
+      onClick={() => onCellClick(rowIndex, columnName, rowData)}
+    >
+      {formatCellValue(value)}
+    </span>
+  );
+}
+
 export function ResultsCard({
   results,
   isExecuting,
@@ -40,86 +65,66 @@ export function ResultsCard({
   onOpenExportModal,
 }: ResultsCardProps) {
   const selectCell = useSelectCell();
-  const selectedCell = useSelectedCell();
   const loadedTable = useLoadedTable();
-  const [tableColumns, setTableColumns] = useState<TableColumn[]>([]);
+  const tableColumns = useTableColumns();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
-    rowIndex: number;
+    rowData: Record<string, unknown>;
   } | null>(null);
 
-  const columns = useMemo(() => {
-    return results?.columns || [];
-  }, [results]);
+  const rows = useMemo(() => results?.rows ?? [], [results]);
 
-  const rows = useMemo(() => {
-    return results?.rows || [];
-  }, [results]);
+  const handleCellClick = useCallback(
+    (rowIndex: number, columnName: string, rowData: Record<string, unknown>) => {
+      const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
+      selectCell({
+        rowIndex,
+        columnName,
+        focusedColumn: columnName,
+        rowData,
+        tableName: loadedTable,
+        primaryKeyColumn: primaryKeyColumn?.name,
+        primaryKeyValue: primaryKeyColumn ? rowData[primaryKeyColumn.name] : undefined,
+      });
+    },
+    [tableColumns, selectCell, loadedTable]
+  );
 
-  useEffect(() => {
-    const loadTableColumns = async () => {
-      if (loadedTable) {
-        try {
-          const cols = await tauriCommands.getTableColumns(loadedTable);
-          setTableColumns(cols);
-        } catch (err) {
-          console.error('Failed to load table columns:', err);
-        }
-      }
-    };
+  const columns = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(() => {
+    return (results?.columns ?? []).map((col) => ({
+      id: col,
+      accessorFn: (row) => row[col],
+      header: col,
+      cell: ({ row, getValue }) => (
+        <ResultCell
+          rowIndex={row.index}
+          columnName={col}
+          value={getValue()}
+          rowData={row.original}
+          onCellClick={handleCellClick}
+        />
+      ),
+    }));
+  }, [results?.columns, handleCellClick]);
 
-    loadTableColumns();
-  }, [loadedTable]);
+  const getRowProps = useCallback(
+    (row: Row<Record<string, unknown>>) => ({
+      onContextMenu: (e: React.MouseEvent<HTMLTableRowElement>) => {
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY, rowData: row.original });
+      },
+    }),
+    []
+  );
 
-  const getRowKey = (row: Record<string, unknown>, rowIndex: number): string => {
-    const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
-    if (primaryKeyColumn?.name && row[primaryKeyColumn.name] !== undefined) {
-      return String(row[primaryKeyColumn.name]);
-    }
-    return `${rowIndex}-${JSON.stringify(row)}`;
-  };
+  const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
 
-  const handleCellClick = (rowIndex: number, columnName: string) => {
-    const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
-    const row = rows[rowIndex];
-
-    selectCell({
-      rowIndex,
-      columnName,
-      focusedColumn: columnName,
-      rowData: row,
-      tableName: loadedTable,
-      primaryKeyColumn: primaryKeyColumn?.name,
-      primaryKeyValue: primaryKeyColumn ? row[primaryKeyColumn.name] : undefined,
-    });
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, rowIndex: number) => {
-    e.preventDefault();
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      rowIndex,
-    });
-  };
-
-  const handleCloseContextMenu = () => {
-    setContextMenu(null);
-  };
-
-  const handleExportRow = () => {
+  const handleExportRow = useCallback(() => {
     if (contextMenu === null || !onOpenExportModal) return;
-    const row = rows[contextMenu.rowIndex];
-
-    const rowData: Record<string, unknown> = {};
-    columns.forEach((col) => {
-      rowData[col] = row[col];
-    });
-
-    onOpenExportModal(rowData);
+    onOpenExportModal(contextMenu.rowData);
     handleCloseContextMenu();
-  };
+  }, [contextMenu, onOpenExportModal, handleCloseContextMenu]);
 
   return (
     <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -149,47 +154,17 @@ export function ResultsCard({
           <Text c="dimmed">No data returned</Text>
         </Center>
       ) : (
-        <Table.ScrollContainer minWidth={500} className={styles.tableContainer}>
-          <Table
-            striped
-            highlightOnHover
-            withColumnBorders
-            stickyHeader
-            className={`${styles.resultsTable} ${isExecuting ? styles.resultsTableExecuting : ''}`}
-          >
-            <Table.Thead>
-              <Table.Tr>
-                {columns.map((col) => (
-                  <Table.Th key={col}>{col}</Table.Th>
-                ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.map((row, rowIndex) => (
-                <Table.Tr
-                  key={getRowKey(row, rowIndex)}
-                  onContextMenu={(e) => handleContextMenu(e, rowIndex)}
-                >
-                  {columns.map((col) => {
-                    const isFocused =
-                      selectedCell?.rowIndex === rowIndex &&
-                      selectedCell?.columnName === col;
-
-                    return (
-                      <Table.Td
-                        key={col}
-                        onClick={() => handleCellClick(rowIndex, col)}
-                        className={`${styles.cellClickable} ${isFocused ? styles.cellFocused : ''}`}
-                      >
-                        {formatCellValue(row[col])}
-                      </Table.Td>
-                    );
-                  })}
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+        <DataTable
+          data={rows}
+          columns={columns}
+          striped
+          highlightOnHover
+          withColumnBorders
+          enableSorting
+          getRowProps={getRowProps}
+          className={`${styles.resultsTable} ${isExecuting ? styles.resultsTableExecuting : ''}`}
+          estimatedRowHeight={36}
+        />
       )}
 
       <Menu

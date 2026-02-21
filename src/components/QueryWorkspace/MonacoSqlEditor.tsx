@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import Editor, { Monaco, OnMount } from '@monaco-editor/react';
 import { useMantineColorScheme } from '@mantine/core';
 import { editor as monacoEditor, languages } from 'monaco-editor';
@@ -7,6 +7,10 @@ import { useConnectionStore } from '../../stores/connectionStore';
 import { DatabaseType } from '../../types/database';
 import { sqlSnippets, convertSnippetToCompletion } from './sql-snippets';
 
+export interface MonacoSqlEditorRef {
+  getSelectedText: () => string;
+}
+
 interface MonacoSqlEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -14,17 +18,28 @@ interface MonacoSqlEditorProps {
   height?: string | number;
 }
 
-export function MonacoSqlEditor({
+export const MonacoSqlEditor = forwardRef<MonacoSqlEditorRef, MonacoSqlEditorProps>(
+function MonacoSqlEditor({
   value,
   onChange,
   onExecute,
   height = '100%',
-}: MonacoSqlEditorProps) {
+}, ref) {
   const { colorScheme } = useMantineColorScheme();
   const tables = useTables();
   const { activeConnection } = useConnectionStore();
   const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    getSelectedText: () => {
+      const editor = editorRef.current;
+      if (!editor) return '';
+      const selection = editor.getSelection();
+      if (!selection) return '';
+      return editor.getModel()?.getValueInRange(selection) ?? '';
+    },
+  }));
 
   const setupSqlAutocomplete = (monaco: Monaco) => {
     monaco.languages.registerCompletionItemProvider('sql', {
@@ -272,4 +287,5 @@ export function MonacoSqlEditor({
       }
     />
   );
-}
+});
+
