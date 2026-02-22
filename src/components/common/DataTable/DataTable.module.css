@@ -4,6 +4,50 @@
   will-change: scroll-position;
 }
 
+/* ── Row selection layout ──────────────────────────────────────────────── */
+
+/* Outer wrapper used when enableRowSelection=true. */
+.selectionWrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Scroll container inside the selection wrapper – grows to fill remaining space. */
+.scrollContainerFlex {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  will-change: scroll-position;
+}
+
+/* Bulk-actions bar shown above the table when rows are selected. */
+.bulkActionsBar {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6));
+  border-bottom: 1px solid light-dark(var(--mantine-color-blue-2), var(--mantine-color-dark-4));
+}
+
+/* Highlight for selected rows – overrides stripes via !important. */
+.selectedRow {
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-5)
+  ) !important;
+}
+
+/* Narrow, centered column for checkboxes (applies to both Th and Td). */
+.checkboxCol {
+  width: 40px;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+  text-align: center;
+}
+
+/* ── Sorting ───────────────────────────────────────────────────────────── */
+
 .sortableHeader {
   cursor: pointer;
   user-select: none;

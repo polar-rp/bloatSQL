@@ -1,5 +1,5 @@
 import { Paper, Stack, Group, Text, Badge, Button, ActionIcon, Code, Tooltip } from '@mantine/core';
-import { IconTrash, IconArrowBack, IconX } from '@tabler/icons-react';
+import { IconArrowBack, IconX } from '@tabler/icons-react';
 import { AlterColumnOperation } from '../../../types/tableStructure';
 import { DatabaseType } from '../../../types/database';
 import { getOperationPreviewSQL } from '../utils/alterTableSqlBuilder';

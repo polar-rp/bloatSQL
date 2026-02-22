@@ -10,9 +10,8 @@ type MainContentProps = {
   results: any;
   error: string | null;
   clearError: () => void;
-  lastExecutionTime: number | null;
   isTableTransitionPending: boolean;
-  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
+  onOpenExportModal?: (rowData?: Record<string, unknown> | Record<string, unknown>[]) => void;
 };
 
 function MainContentComponent({
@@ -24,7 +23,6 @@ function MainContentComponent({
   results,
   error,
   clearError,
-  lastExecutionTime,
   isTableTransitionPending,
   onOpenExportModal,
 }: MainContentProps) {
@@ -38,7 +36,6 @@ function MainContentComponent({
       results={results}
       error={error}
       onClearError={clearError}
-      lastExecutionTime={lastExecutionTime}
       onOpenExportModal={onOpenExportModal}
     />
   );

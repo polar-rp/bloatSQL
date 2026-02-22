@@ -142,7 +142,7 @@ export function DatabaseTree({
   }, [selectedTable]);
 
   const renderNode = useCallback(
-    ({ node, expanded, hasChildren, elementProps }: RenderTreeNodePayload) => {
+    ({ node, elementProps }: RenderTreeNodePayload) => {
       const dbNode = node as DatabaseTreeNode;
 
       if (dbNode.nodeType === 'table') {

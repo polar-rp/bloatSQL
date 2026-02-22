@@ -1,4 +1,4 @@
-import { editor as monacoEditor } from 'monaco-editor';
+import type { IRange, languages as monacoLanguages } from 'monaco-editor';
 
 export interface SqlSnippet {
   label: string;
@@ -144,9 +144,9 @@ export const sqlSnippets: SqlSnippet[] = [
 
 export function convertSnippetToCompletion(
   snippet: SqlSnippet,
-  range: monacoEditor.IRange,
+  range: IRange,
   monaco: any
-): monacoEditor.languages.CompletionItem {
+): monacoLanguages.CompletionItem {
   return {
     label: snippet.label,
     kind: monaco.languages.CompletionItemKind.Snippet,

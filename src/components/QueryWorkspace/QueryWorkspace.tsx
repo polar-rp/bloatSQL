@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Stack, Center, Text } from '@mantine/core';
+import { Box, Stack } from '@mantine/core';
 import { QueryResult } from '../../types/database';
 import { QueryEditorCard } from './QueryEditorCard';
 import { ResultsCard } from './ResultsCard';
@@ -17,8 +17,7 @@ interface QueryWorkspaceProps {
   results: QueryResult | null;
   error: string | null;
   onClearError: () => void;
-  lastExecutionTime: number | null;
-  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
+  onOpenExportModal?: (rowData?: Record<string, unknown> | Record<string, unknown>[]) => void;
 }
 
 export function QueryWorkspace({
@@ -30,10 +29,9 @@ export function QueryWorkspace({
   results,
   error,
   onClearError,
-  lastExecutionTime,
   onOpenExportModal,
 }: QueryWorkspaceProps) {
-  const [editorHeight, setEditorHeight] = useState<string>('45vh');
+  const [editorHeight] = useState<string>('45vh');
   const viewMode = useViewMode();
   const queryEditorVisible = useQueryEditorVisible();
 

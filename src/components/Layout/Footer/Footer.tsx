@@ -1,6 +1,6 @@
 import { memo, useCallback } from "react";
-import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack } from "@mantine/core";
-import { IconTable, IconList, IconSql, IconPlus, IconSchema } from "@tabler/icons-react";
+import { SegmentedControl, Center, Box, Group, ActionIcon, Tooltip, Button, Stack, Text, Divider } from "@mantine/core";
+import { IconTable, IconList, IconSql, IconPlus, IconSchema, IconDownload } from "@tabler/icons-react";
 import styles from "./Footer.module.css";
 import { useFooterCollapsed, useLayoutStore } from "../../../stores/layoutStore";
 import {
@@ -22,6 +22,12 @@ import { tauriCommands } from "../../../tauri/commands";
 import { useEditCellStore } from "../../../stores/editCellStore";
 import { useActiveConnection } from "../../../stores/connectionStore";
 import { DatabaseType } from "../../../types/database";
+import {
+  useSelectedRows,
+  useSelectedRowCount,
+  useClearRowSelection,
+  useExportRowsFn,
+} from "../../../stores/rowSelectionStore";
 
 function FooterComponent() {
   const collapsed = useFooterCollapsed();
@@ -38,6 +44,11 @@ function FooterComponent() {
   const dbType = activeConnection?.dbType ?? DatabaseType.MariaDB;
 
   const { removeOperationByIndex, clearAllPending } = useStructureEditStore();
+
+  const selectedRows = useSelectedRows();
+  const selectedCount = useSelectedRowCount();
+  const clearRowSelection = useClearRowSelection();
+  const exportRowsFn = useExportRowsFn();
 
   const handleUndoOperation = useCallback(
     (index: number) => {
@@ -93,6 +104,32 @@ function FooterComponent() {
                 },
               ]}
             />
+
+            {viewMode === 'data' && selectedCount > 0 && (
+              <>
+                <Divider orientation="vertical" />
+                <Text size="sm" c="dimmed">
+                  {selectedCount} {selectedCount === 1 ? 'row' : 'rows'} selected
+                </Text>
+                <Button size="xs" variant="subtle" color="gray" onClick={() => clearRowSelection?.()}>
+                  Clear
+                </Button>
+                {exportRowsFn && (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<IconDownload size={14} />}
+                    onClick={() => {
+                      exportRowsFn(selectedRows);
+                      clearRowSelection?.();
+                    }}
+                  >
+                    Export selected
+                  </Button>
+                )}
+                <Divider orientation="vertical" />
+              </>
+            )}
 
             {viewMode === 'data' && (
               <Button

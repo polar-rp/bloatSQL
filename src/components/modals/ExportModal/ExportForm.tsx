@@ -44,7 +44,7 @@ import {
 interface ExportFormProps {
   databaseName: string;
   onSuccess: () => void;
-  rowData?: Record<string, unknown>;
+  rowData?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 interface FormValues {
@@ -85,6 +85,12 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
   const [rowExportFormat, setRowExportFormat] = useState<'json' | 'csv' | 'sql'>('json');
 
   const isRowExport = !!rowData;
+  const rowsArray: Record<string, unknown>[] = rowData
+    ? Array.isArray(rowData)
+      ? rowData
+      : [rowData]
+    : [];
+  const rowCount = rowsArray.length;
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -210,35 +216,41 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
   };
 
   const handleRowExport = async () => {
-    if (!rowData) return;
+    if (!rowData || rowsArray.length === 0) return;
 
     let content = '';
     let defaultFilename = '';
     let filters: Array<{ name: string; extensions: string[] }> = [];
+    const ts = new Date().getTime();
 
     if (rowExportFormat === 'json') {
-      content = JSON.stringify(rowData, null, 2);
-      defaultFilename = `row_export_${new Date().getTime()}.json`;
+      content = JSON.stringify(rowCount === 1 ? rowsArray[0] : rowsArray, null, 2);
+      defaultFilename = `row_export_${ts}.json`;
       filters = [{ name: 'JSON', extensions: ['json'] }];
     } else if (rowExportFormat === 'csv') {
-      const headers = Object.keys(rowData).join(',');
-      const values = Object.values(rowData).map((v) => {
-        if (v === null) return 'NULL';
-        if (typeof v === 'string') return `"${v.replace(/"/g, '""')}"`;
-        return String(v);
-      }).join(',');
-      content = `${headers}\n${values}`;
-      defaultFilename = `row_export_${new Date().getTime()}.csv`;
+      const headers = Object.keys(rowsArray[0]).join(',');
+      const valueLines = rowsArray.map((row) =>
+        Object.values(row).map((v) => {
+          if (v === null) return 'NULL';
+          if (typeof v === 'string') return `"${v.replace(/"/g, '""')}"`;
+          return String(v);
+        }).join(',')
+      );
+      content = [headers, ...valueLines].join('\n');
+      defaultFilename = `row_export_${ts}.csv`;
       filters = [{ name: 'CSV', extensions: ['csv'] }];
     } else if (rowExportFormat === 'sql') {
-      const columns = Object.keys(rowData).map((k) => `\`${k}\``).join(', ');
-      const values = Object.values(rowData).map((v) => {
-        if (v === null) return 'NULL';
-        if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
-        return String(v);
-      }).join(', ');
-      content = `INSERT INTO table_name (${columns}) VALUES (${values});`;
-      defaultFilename = `row_export_${new Date().getTime()}.sql`;
+      const stmts = rowsArray.map((row) => {
+        const columns = Object.keys(row).map((k) => `\`${k}\``).join(', ');
+        const values = Object.values(row).map((v) => {
+          if (v === null) return 'NULL';
+          if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+          return String(v);
+        }).join(', ');
+        return `INSERT INTO table_name (${columns}) VALUES (${values});`;
+      });
+      content = stmts.join('\n');
+      defaultFilename = `row_export_${ts}.sql`;
       filters = [{ name: 'SQL', extensions: ['sql'] }];
     }
 
@@ -309,26 +321,34 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
 
   if (isRowExport) {
     const getPreviewContent = () => {
-      if (!rowData) return '';
+      if (rowsArray.length === 0) return '';
+      const previewRows = rowsArray.slice(0, 10);
+      const truncated = rowsArray.length > 10;
 
       if (rowExportFormat === 'json') {
-        return JSON.stringify(rowData, null, 2);
+        const data = previewRows.length === 1 ? previewRows[0] : previewRows;
+        return JSON.stringify(data, null, 2) + (truncated ? `\n// ... ${rowsArray.length - 10} more rows` : '');
       } else if (rowExportFormat === 'csv') {
-        const headers = Object.keys(rowData).join(',');
-        const values = Object.values(rowData).map((v) => {
-          if (v === null) return 'NULL';
-          if (typeof v === 'string') return `"${v.replace(/"/g, '""')}"`;
-          return String(v);
-        }).join(',');
-        return `${headers}\n${values}`;
+        const headers = Object.keys(rowsArray[0]).join(',');
+        const valueLines = previewRows.map((row) =>
+          Object.values(row).map((v) => {
+            if (v === null) return 'NULL';
+            if (typeof v === 'string') return `"${v.replace(/"/g, '""')}"`;
+            return String(v);
+          }).join(',')
+        );
+        return [headers, ...valueLines].join('\n') + (truncated ? `\n...` : '');
       } else if (rowExportFormat === 'sql') {
-        const columns = Object.keys(rowData).map((k) => `\`${k}\``).join(', ');
-        const values = Object.values(rowData).map((v) => {
-          if (v === null) return 'NULL';
-          if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
-          return String(v);
-        }).join(', ');
-        return `INSERT INTO table_name (${columns}) VALUES (${values});`;
+        const stmts = previewRows.map((row) => {
+          const columns = Object.keys(row).map((k) => `\`${k}\``).join(', ');
+          const values = Object.values(row).map((v) => {
+            if (v === null) return 'NULL';
+            if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+            return String(v);
+          }).join(', ');
+          return `INSERT INTO table_name (${columns}) VALUES (${values});`;
+        });
+        return stmts.join('\n') + (truncated ? `\n-- ... ${rowsArray.length - 10} more rows` : '');
       }
 
       return '';
@@ -389,7 +409,7 @@ export function ExportForm({ databaseName, onSuccess, rowData }: ExportFormProps
               Cancel
             </Button>
             <Button type="submit">
-              Export Row
+              Export {rowCount === 1 ? 'Row' : `${rowCount} Rows`}
             </Button>
           </Group>
         </Stack>

@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   Text,
   Loader,
@@ -8,10 +8,11 @@ import {
   Menu,
 } from '@mantine/core';
 import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
-import { type ColumnDef, type Row } from '@tanstack/react-table';
+import { type ColumnDef, type Row, type RowSelectionState, type OnChangeFn } from '@tanstack/react-table';
 import { QueryResult } from '../../types/database';
 import { useSelectCell, useSelectedCell } from '../../stores/editCellStore';
 import { useLoadedTable, useTableColumns } from '../../stores/queryStore';
+import { useRowSelectionStore } from '../../stores/rowSelectionStore';
 import { DataTable } from '../common/DataTable';
 import styles from './ResultsCard.module.css';
 
@@ -20,7 +21,7 @@ interface ResultsCardProps {
   isExecuting: boolean;
   error: string | null;
   onClearError: () => void;
-  onOpenExportModal?: (rowData?: Record<string, unknown>) => void;
+  onOpenExportModal?: (rowData?: Record<string, unknown> | Record<string, unknown>[]) => void;
 }
 
 function formatCellValue(value: unknown): string {
@@ -48,12 +49,12 @@ function ResultCell({ rowIndex, columnName, value, rowData, onCellClick }: Resul
     selectedCell?.rowIndex === rowIndex && selectedCell?.columnName === columnName;
 
   return (
-    <span
+    <div
       className={`${styles.cellClickable} ${isFocused ? styles.cellFocused : ''}`}
       onClick={() => onCellClick(rowIndex, columnName, rowData)}
     >
       {formatCellValue(value)}
-    </span>
+    </div>
   );
 }
 
@@ -67,6 +68,7 @@ export function ResultsCard({
   const selectCell = useSelectCell();
   const loadedTable = useLoadedTable();
   const tableColumns = useTableColumns();
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -74,6 +76,38 @@ export function ResultsCard({
   } | null>(null);
 
   const rows = useMemo(() => results?.rows ?? [], [results]);
+
+  // Reset selection when query results change.
+  useEffect(() => {
+    setRowSelection({});
+  }, [results]);
+
+  // Sync selected rows + clear function to store so Footer can read them.
+  useEffect(() => {
+    const selectedRowData = Object.keys(rowSelection)
+      .filter((id) => rowSelection[id])
+      .map((id) => rows[parseInt(id)])
+      .filter(Boolean) as Record<string, unknown>[];
+    useRowSelectionStore.getState().setSelection(selectedRowData, () => setRowSelection({}));
+  }, [rowSelection, rows]);
+
+  // Register export callback in store; clean up on unmount.
+  useEffect(() => {
+    useRowSelectionStore.getState().setExportFn(
+      onOpenExportModal ? (selectedRows) => onOpenExportModal(selectedRows) : null
+    );
+    return () => {
+      useRowSelectionStore.getState().reset();
+    };
+  }, [onOpenExportModal]);
+
+  const handleRowSelectionChange = useCallback<OnChangeFn<RowSelectionState>>(
+    (updaterOrValue) =>
+      setRowSelection((prev) =>
+        typeof updaterOrValue === 'function' ? updaterOrValue(prev) : updaterOrValue
+      ),
+    []
+  );
 
   const handleCellClick = useCallback(
     (rowIndex: number, columnName: string, rowData: Record<string, unknown>) => {
@@ -161,6 +195,9 @@ export function ResultsCard({
           highlightOnHover
           withColumnBorders
           enableSorting
+          enableRowSelection
+          rowSelection={rowSelection}
+          onRowSelectionChange={handleRowSelectionChange}
           getRowProps={getRowProps}
           className={`${styles.resultsTable} ${isExecuting ? styles.resultsTableExecuting : ''}`}
           estimatedRowHeight={36}

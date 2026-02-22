@@ -118,7 +118,7 @@ function App() {
   const [editingConnection, setEditingConnection] = useState<Connection | null>(
     null,
   );
-  const [exportRowData, setExportRowData] = useState<Record<string, unknown> | undefined>(undefined);
+  const [exportRowData, setExportRowData] = useState<Record<string, unknown> | Record<string, unknown>[] | undefined>(undefined);
 
   const setTableViewSelected = useSetTableViewSelected();
 
@@ -305,7 +305,7 @@ function App() {
   );
 
   const handleOpenExportModalWithRow = useCallback(
-    (rowData?: Record<string, unknown>) => {
+    (rowData?: Record<string, unknown> | Record<string, unknown>[]) => {
       setExportRowData(rowData);
       openExportModal();
     },
@@ -366,7 +366,6 @@ function App() {
           results={results}
           error={queryError}
           clearError={clearError}
-          lastExecutionTime={lastExecutionTime}
           isTableTransitionPending={false}
           onOpenExportModal={handleOpenExportModalWithRow}
         />

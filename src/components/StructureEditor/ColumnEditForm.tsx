@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   AppShell,
   Stack,
-  Text,
   TextInput,
   Select,
   NumberInput,

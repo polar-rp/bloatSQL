@@ -5,17 +5,23 @@ interface ExportModalProps {
   opened: boolean;
   onClose: () => void;
   databaseName: string;
-  rowData?: Record<string, unknown>;
+  rowData?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 export function ExportModal({ opened, onClose, databaseName, rowData }: ExportModalProps) {
   const isRowExport = !!rowData;
+  const rowCount = Array.isArray(rowData) ? rowData.length : rowData ? 1 : 0;
+  const title = !isRowExport
+    ? 'Export Database'
+    : rowCount === 1
+    ? 'Export Row'
+    : `Export ${rowCount} Rows`;
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={isRowExport ? "Export Row" : "Export Database"}
+      title={title}
       size="xl"
       centered
       overlayProps={{
