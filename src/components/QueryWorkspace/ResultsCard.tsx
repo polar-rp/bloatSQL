@@ -7,11 +7,14 @@ import {
   Box,
   Menu,
 } from '@mantine/core';
-import { IconAlertCircle, IconDownload } from '@tabler/icons-react';
+import { IconAlertCircle, IconDownload, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { type ColumnDef, type Row, type RowSelectionState, type OnChangeFn } from '@tanstack/react-table';
-import { QueryResult } from '../../types/database';
+import { QueryResult, DatabaseType } from '../../types/database';
 import { useSelectCell, useSelectedCell } from '../../stores/editCellStore';
-import { useLoadedTable, useTableColumns } from '../../stores/queryStore';
+import { useLoadedTable, useTableColumns, useRefreshTable } from '../../stores/queryStore';
+import { useActiveConnection } from '../../stores/connectionStore';
+import { tauriCommands } from '../../tauri/commands';
 import { useRowSelectionStore } from '../../stores/rowSelectionStore';
 import { DataTable } from '../common/DataTable';
 import styles from './ResultsCard.module.css';
@@ -68,6 +71,8 @@ export function ResultsCard({
   const selectCell = useSelectCell();
   const loadedTable = useLoadedTable();
   const tableColumns = useTableColumns();
+  const refreshTable = useRefreshTable();
+  const activeConnection = useActiveConnection();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -154,11 +159,68 @@ export function ResultsCard({
 
   const handleCloseContextMenu = useCallback(() => setContextMenu(null), []);
 
+  // Rows that the context menu actions will target.
+  // If the right-clicked row is part of a multi-row selection, all selected rows are targeted.
+  const contextMenuTargetRows = useMemo(() => {
+    if (!contextMenu) return [];
+    const selectedRowsList = Object.keys(rowSelection)
+      .filter((id) => rowSelection[id])
+      .map((id) => rows[parseInt(id)])
+      .filter(Boolean) as Record<string, unknown>[];
+    const rightClickedIsSelected = selectedRowsList.some((r) => r === contextMenu.rowData);
+    if (rightClickedIsSelected && selectedRowsList.length > 1) return selectedRowsList;
+    return [contextMenu.rowData];
+  }, [contextMenu, rowSelection, rows]);
+
   const handleExportRow = useCallback(() => {
     if (contextMenu === null || !onOpenExportModal) return;
-    onOpenExportModal(contextMenu.rowData);
+    onOpenExportModal(contextMenuTargetRows.length > 1 ? contextMenuTargetRows : contextMenu.rowData);
     handleCloseContextMenu();
-  }, [contextMenu, onOpenExportModal, handleCloseContextMenu]);
+  }, [contextMenu, contextMenuTargetRows, onOpenExportModal, handleCloseContextMenu]);
+
+  const handleDeleteRow = useCallback(async () => {
+    if (contextMenu === null || !loadedTable) return;
+
+    const primaryKeyColumn = tableColumns.find((col) => col.isPrimaryKey);
+    if (!primaryKeyColumn) {
+      notifications.show({
+        title: 'Cannot delete',
+        message: 'No primary key column found for this table.',
+        color: 'red',
+      });
+      handleCloseContextMenu();
+      return;
+    }
+
+    const quote = activeConnection?.dbType === DatabaseType.PostgreSQL ? '"' : '`';
+    const quotedTable = `${quote}${loadedTable}${quote}`;
+    const quotedColumn = `${quote}${primaryKeyColumn.name}${quote}`;
+    const formatPk = (v: unknown) =>
+      typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : String(v);
+
+    const query =
+      contextMenuTargetRows.length > 1
+        ? `DELETE FROM ${quotedTable} WHERE ${quotedColumn} IN (${contextMenuTargetRows.map((r) => formatPk(r[primaryKeyColumn.name])).join(', ')})`
+        : `DELETE FROM ${quotedTable} WHERE ${quotedColumn} = ${formatPk(contextMenu.rowData[primaryKeyColumn.name])}`;
+
+    handleCloseContextMenu();
+
+    try {
+      await tauriCommands.executeQuery(query);
+      notifications.show({
+        title: contextMenuTargetRows.length > 1 ? 'Rows deleted' : 'Row deleted',
+        message: `Deleted ${contextMenuTargetRows.length > 1 ? `${contextMenuTargetRows.length} rows` : '1 row'}`,
+        color: 'green',
+      });
+      await refreshTable();
+    } catch (error) {
+      notifications.show({
+        title: 'Delete failed',
+        message: String(error),
+        color: 'red',
+      });
+    }
+  }, [contextMenu, contextMenuTargetRows, loadedTable, tableColumns, activeConnection, handleCloseContextMenu, refreshTable]);
 
   return (
     <Box h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -228,7 +290,19 @@ export function ResultsCard({
             leftSection={<IconDownload size={16} />}
             onClick={handleExportRow}
           >
-            Eksportuj wiersz
+            {contextMenuTargetRows.length > 1
+              ? `Export ${contextMenuTargetRows.length} rows`
+              : 'Export row'}
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Item
+            leftSection={<IconTrash size={16} />}
+            color="red"
+            onClick={handleDeleteRow}
+          >
+            {contextMenuTargetRows.length > 1
+              ? `Delete ${contextMenuTargetRows.length} rows`
+              : 'Delete row'}
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
